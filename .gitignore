@@ -1,0 +1,37 @@
+# Зависимости (самое тяжелое, они весят сотни мегабайт)
+node_modules/
+.pnpm-store/
+.yarn/
+
+# Логи (мусорные файлы от ошибок)
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm/
+*.log
+
+# Сборка Next.js и бэкенда (временные файлы компиляции)
+.next/
+out/
+build/
+dist/
+
+# Конфиги IDE (твои личные настройки редакторов)
+.idea/
+.vscode/
+.kiro/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Секретные ключи (пароли от БД, JWT-секреты)
+.env
+.env.local
+.env.production
+.env.development
+
+# Системные файлы ОС
+Thumbs.db
+.DS_Store

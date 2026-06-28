@@ -1,0 +1,89 @@
+services:
+  # ─────────────────────────────────────────────
+  # PostgreSQL Database
+  # ─────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: arena_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-arena_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-arena_secret_password}
+      POSTGRES_DB: ${DB_NAME:-underground_arena}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/src/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-arena_user} -d ${DB_NAME:-underground_arena}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - arena_net
+
+  # ─────────────────────────────────────────────
+  # NestJS Backend
+  # ─────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: arena_backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DB_HOST: postgres
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend/src:/app/src
+    networks:
+      - arena_net
+
+  # ─────────────────────────────────────────────
+  # Next.js Frontend
+  # ─────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: arena_frontend
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost/api
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - arena_net
+
+  # ─────────────────────────────────────────────
+  # Nginx Reverse Proxy
+  # ─────────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: arena_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - arena_net
+
+volumes:
+  postgres_data:
+
+networks:
+  arena_net:
+    driver: bridge
