@@ -7,6 +7,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { User } from './user.entity';
+import { GameType } from './user.entity';
 
 @Entity('onboarding_answers')
 export class OnboardingAnswer {
@@ -28,6 +29,12 @@ export class OnboardingAnswer {
 
   @Column({ type: 'simple-array', nullable: true })
   goals: string[];
+
+  @Column({ type: 'enum', enum: GameType, nullable: true })
+  mainGame: GameType;
+
+  @Column({ nullable: true })
+  source: string;
 
   @CreateDateColumn()
   completedAt: Date;

@@ -9,41 +9,38 @@ import { toast } from 'react-hot-toast';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
-import { Coins, History, Swords, Landmark, CreditCard, ExternalLink, ShieldCheck } from 'lucide-react';
+import { Coins, History, Swords, Landmark, CreditCard, ExternalLink, ShieldCheck, Star, User, Users, MessageSquare, Trophy } from 'lucide-react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import Link from 'next/link';
+import TournamentCard from '@/components/tournaments/TournamentCard';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { isAuthenticated, user, setUser, isLoading } = useAuthStore();
+  const { isAuthenticated, user, refreshUser, isLoading } = useAuthStore();
   
-  const [activeTab, setActiveTab] = useState<'wallet' | 'bets' | 'tournaments'>('wallet');
+  const [activeTab, setActiveTab] = useState<'wallet' | 'bets' | 'tournaments' | 'saved'>('wallet');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [bets, setBets] = useState<Bet[]>([]);
   const [myTournaments, setMyTournaments] = useState<Tournament[]>([]);
+  const [savedTournaments, setSavedTournaments] = useState<Tournament[]>([]);
   
   const [loadingTx, setLoadingTx] = useState(false);
   const [depositing, setDepositing] = useState(false);
-
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      toast.error('Пожалуйста, войдите в систему');
-      router.push('/auth/login');
-    }
-  }, [isAuthenticated, isLoading, router]);
 
   const loadDashboardData = async () => {
     if (!user) return;
     setLoadingTx(true);
     try {
-      const [walletData, betsData, tourData] = await Promise.all([
+      const [walletData, betsData, tourData, savedData] = await Promise.all([
         api.users.getWallet(),
         api.bets.getMy(),
         api.tournaments.getAll({ limit: 50 }),
+        api.tournaments.getSaved(),
       ]);
       setTransactions(walletData.transactions);
       setBets(betsData.data);
+      setSavedTournaments(savedData.map((t) => ({ ...t, isSaved: true })));
       
       // Filter tournaments where the user is organizer or participant
       const relevantTours = tourData.data.filter(
@@ -68,11 +65,7 @@ export default function DashboardPage() {
     try {
       const res = await api.wallet.deposit(1000);
       toast.success(res.message);
-      
-      // Update local store balance
-      if (user) {
-        setUser({ ...user, credits: Number(user.credits) + 1000 });
-      }
+      await refreshUser();
       loadDashboardData();
     } catch {
       toast.error('Ошибка пополнения баланса');
@@ -199,6 +192,81 @@ export default function DashboardPage() {
         </Card>
       </div>
 
+      {/* Quick Navigation */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <Link href={`/profile/${user.id}`}>
+          <Card className="p-4 hover:border-neon-purple transition-all cursor-pointer group h-full">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-lg bg-neon-purple/10 group-hover:bg-neon-purple/20 transition-colors">
+                <User className="w-6 h-6 text-neon-purple" />
+              </div>
+              <div>
+                <h3 className="font-orbitron font-bold text-sm text-white">Мой Профиль</h3>
+                <p className="text-xs text-gray-400">Статистика и достижения</p>
+              </div>
+            </div>
+          </Card>
+        </Link>
+
+        <Link href="/leaderboard">
+          <Card className="p-4 hover:border-neon-gold transition-all cursor-pointer group h-full">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-lg bg-neon-gold/10 group-hover:bg-neon-gold/20 transition-colors">
+                <Trophy className="w-6 h-6 text-neon-gold" />
+              </div>
+              <div>
+                <h3 className="font-orbitron font-bold text-sm text-white">Лидеры</h3>
+                <p className="text-xs text-gray-400">Таблица рейтингов</p>
+              </div>
+            </div>
+          </Card>
+        </Link>
+
+        <Link href="/teams">
+          <Card className="p-4 hover:border-neon-blue transition-all cursor-pointer group h-full">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-lg bg-neon-blue/10 group-hover:bg-neon-blue/20 transition-colors">
+                <Users className="w-6 h-6 text-neon-blue" />
+              </div>
+              <div>
+                <h3 className="font-orbitron font-bold text-sm text-white">Команда</h3>
+                <p className="text-xs text-gray-400">Состав и кланы</p>
+              </div>
+            </div>
+          </Card>
+        </Link>
+
+        <Link href="/friends">
+          <Card className="p-4 hover:border-neon-green transition-all cursor-pointer group h-full">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-lg bg-neon-green/10 group-hover:bg-neon-green/20 transition-colors">
+                <MessageSquare className="w-6 h-6 text-neon-green" />
+              </div>
+              <div>
+                <h3 className="font-orbitron font-bold text-sm text-white">Друзья</h3>
+                <p className="text-xs text-gray-400">Подписки и взаимки</p>
+              </div>
+            </div>
+          </Card>
+        </Link>
+
+        <Link href="/community">
+          <Card className="p-4 hover:border-neon-green transition-all cursor-pointer group h-full">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-lg bg-neon-green/10 group-hover:bg-neon-green/20 transition-colors">
+                <MessageSquare className="w-6 h-6 text-neon-green" />
+              </div>
+              <div>
+                <h3 className="font-orbitron font-bold text-sm text-white">Сообщество</h3>
+                <p className="text-xs text-gray-400">Игровые доски</p>
+              </div>
+            </div>
+          </Card>
+        </Link>
+      </div>
+
+
+
       {/* Tabs Interface */}
       <div className="space-y-6">
         <div className="flex gap-2 border-b border-arena-border">
@@ -233,6 +301,17 @@ export default function DashboardPage() {
             }`}
           >
             <Swords className="w-4 h-4" /> Мои турниры
+          </button>
+
+          <button
+            onClick={() => setActiveTab('saved')}
+            className={`pb-3 px-4 font-orbitron text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 border-b-2 transition-all ${
+              activeTab === 'saved'
+                ? 'border-neon-purple text-neon-purple neon-text-purple'
+                : 'border-transparent text-gray-400 hover:text-white'
+            }`}
+          >
+            <Star className="w-4 h-4" /> Сохранённые
           </button>
         </div>
 
@@ -369,7 +448,7 @@ export default function DashboardPage() {
                       {myTournaments.map((tour) => {
                         const date = format(new Date(tour.startDate), 'd MMM yyyy, HH:mm', { locale: ru });
                         const fee = Number(tour.entryFee);
-                        
+
                         return (
                           <Card key={tour.id} className="p-4 hover:border-neon-purple/40 flex flex-col justify-between h-44">
                             <div className="space-y-1">
@@ -388,6 +467,26 @@ export default function DashboardPage() {
                           </Card>
                         );
                       })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Saved tournaments panel */}
+              {activeTab === 'saved' && (
+                <div className="space-y-4">
+                  <h3 className="font-orbitron font-bold text-sm text-white uppercase tracking-wider">
+                    Сохранённые турниры
+                  </h3>
+                  {savedTournaments.length === 0 ? (
+                    <div className="text-center py-12 text-sm text-gray-500">
+                      Вы ещё не сохранили ни одного турнира. Нажмите ★ на карточке турнира.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {savedTournaments.map((tour) => (
+                        <TournamentCard key={tour.id} tournament={tour} />
+                      ))}
                     </div>
                   )}
                 </div>

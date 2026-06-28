@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/auth.store';
-import { Menu, X, Coins, User as UserIcon, LogOut, LayoutDashboard, PlusCircle, Gamepad2 } from 'lucide-react';
+import { Menu, X, Coins, User as UserIcon, LogOut, LayoutDashboard, PlusCircle, Gamepad2, MessageSquare } from 'lucide-react';
 import Button from './Button';
 
 export default function Navbar() {
@@ -20,6 +20,8 @@ export default function Navbar() {
 
   const navLinks = [
     { href: '/tournaments', label: 'Турниры', icon: <Gamepad2 className="w-4 h-4" /> },
+    { href: '/friends', label: 'Друзья', icon: <UserIcon className="w-4 h-4" /> },
+    { href: '/chat', label: 'Чат', icon: <MessageSquare className="w-4 h-4" /> },
   ];
 
   if (isAuthenticated && (user?.role === 'organizer' || user?.role === 'admin')) {

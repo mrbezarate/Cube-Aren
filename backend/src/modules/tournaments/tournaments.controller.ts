@@ -10,12 +10,14 @@ import {
   Query,
   UseGuards,
   ParseUUIDPipe,
+  Request,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { TournamentsService } from './tournaments.service';
 import { CreateTournamentDto } from './dto/create-tournament.dto';
 import { FilterTournamentDto } from './dto/filter-tournament.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -38,10 +40,27 @@ export class TournamentsController {
     return this.tournamentsService.findFeatured();
   }
 
+  @Get('saved')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get saved tournaments for current user' })
+  getSaved(@CurrentUser('id') userId: string) {
+    return this.tournamentsService.getSavedTournaments(userId);
+  }
+
   @Get(':id')
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Get tournament by ID' })
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.tournamentsService.findOne(id);
+  async findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId?: string,
+  ) {
+    await this.tournamentsService.incrementViews(id);
+    const tournament = await this.tournamentsService.findOne(id);
+    const isSaved = userId
+      ? await this.tournamentsService.isTournamentSaved(userId, id)
+      : false;
+    return { ...tournament, isSaved };
   }
 
   @Post()
@@ -51,6 +70,28 @@ export class TournamentsController {
   @ApiOperation({ summary: 'Create tournament (organizer only)' })
   create(@CurrentUser('id') userId: string, @Body() dto: CreateTournamentDto) {
     return this.tournamentsService.create(userId, dto);
+  }
+
+  @Post(':id/save')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Save tournament to bookmarks' })
+  saveTournament(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.tournamentsService.saveTournament(userId, id);
+  }
+
+  @Delete(':id/save')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Remove tournament from bookmarks' })
+  unsaveTournament(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.tournamentsService.unsaveTournament(userId, id);
   }
 
   @Put(':id')

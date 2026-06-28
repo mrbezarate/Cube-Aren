@@ -16,6 +16,7 @@ const schema = z.object({
   description: z.string().optional(),
   game: z.enum(['cs2', 'dota2', 'valorant', 'lol', 'pubg', 'apex', 'custom']),
   format: z.enum(['1v1', '5v5', 'battle_royale', 'custom']),
+  tournamentType: z.enum(['solo', 'team']).optional(),
   entryFee: z.number().min(0, 'Не может быть отрицательным'),
   maxParticipants: z.number().min(2, 'Минимум 2 участника').max(1000),
   startDate: z.string().refine((val) => !isNaN(Date.parse(val)), 'Неверная дата начала'),
@@ -42,6 +43,7 @@ export default function CreateTournamentPage() {
       description: '',
       game: 'cs2',
       format: '5v5',
+      tournamentType: 'solo',
       entryFee: 0,
       maxParticipants: 16,
       startDate: '',
@@ -50,17 +52,15 @@ export default function CreateTournamentPage() {
     },
   });
 
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      toast.error('Войдите, чтобы создавать турниры');
-      router.push('/auth/login');
-    } else if (!isLoading && user && user.role !== 'organizer' && user.role !== 'admin') {
-      toast.error('Недостаточно прав. Нужен статус Организатора.');
-      router.push('/tournaments');
-    }
-  }, [isAuthenticated, user, isLoading, router]);
+  // Check role but don't redirect (middleware handles auth)
+  const canCreate = user && (user.role === 'organizer' || user.role === 'admin');
 
   const onSubmit = async (data: FormValues) => {
+    if (!canCreate) {
+      toast.error('Недостаточно прав. Нужен статус Организатора.');
+      return;
+    }
+    
     setLoading(true);
     try {
       const res = await api.tournaments.create(data);
@@ -77,6 +77,18 @@ export default function CreateTournamentPage() {
     return (
       <div className="max-w-7xl mx-auto px-4 py-20 flex flex-col items-center justify-center">
         <div className="w-10 h-10 border-4 border-neon-purple border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!canCreate) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-20 text-center space-y-4">
+        <ShieldAlert className="w-16 h-16 text-neon-red mx-auto" />
+        <h1 className="font-orbitron font-black text-2xl text-white">Недостаточно прав</h1>
+        <p className="text-gray-400">Создание турниров доступно только для организаторов.</p>
+        <p className="text-xs text-gray-500">Измените роль в настройках профиля или обратитесь к администратору.</p>
+        <Button onClick={() => router.push('/tournaments')}>Смотреть турниры</Button>
       </div>
     );
   }
@@ -136,6 +148,20 @@ export default function CreateTournamentPage() {
               <option value="1v1">1 на 1</option>
               <option value="battle_royale">Королевская битва</option>
               <option value="custom">Другое</option>
+            </select>
+          </div>
+
+          {/* Tournament Type Selector */}
+          <div className="space-y-1.5 md:col-span-2">
+            <label className="text-xs uppercase font-orbitron font-bold text-gray-400 flex items-center gap-1">
+              <Users className="w-3.5 h-3.5 text-neon-blue" /> Тип турнира
+            </label>
+            <select
+              {...register('tournamentType')}
+              className="w-full px-4 py-2.5 rounded-lg glass-input text-sm"
+            >
+              <option value="solo">👤 Одиночный (Solo) - игроки участвуют индивидуально</option>
+              <option value="team">👥 Клановый (Team) - участвуют команды</option>
             </select>
           </div>
 

@@ -51,7 +51,16 @@ export default function RegisterPage() {
       const res = await api.auth.register(data);
       login(res.user, res.accessToken, res.refreshToken);
       toast.success('Добро пожаловать на Арену!');
-      router.push('/dashboard');
+      
+      // If user has not completed onboarding, open modal on main page
+      if (res.user.onboardingCompleted) {
+        router.push('/dashboard');
+      } else {
+        router.push('/');
+        // Open modal globally - import store lazily to avoid SSR issues
+        const { useOnboardingStore } = await import('@/lib/store/onboarding.store');
+        useOnboardingStore.getState().open();
+      }
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Ошибка регистрации. Попробуйте другие данные.');
     } finally {

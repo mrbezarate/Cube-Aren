@@ -34,6 +34,11 @@ export enum TournamentStatus {
   CANCELLED = 'cancelled',
 }
 
+export enum TournamentType {
+  SOLO = 'solo',
+  TEAM = 'team',
+}
+
 @Entity('tournaments')
 export class Tournament {
   @PrimaryGeneratedColumn('uuid')
@@ -53,6 +58,9 @@ export class Tournament {
 
   @Column({ type: 'enum', enum: TournamentStatus, default: TournamentStatus.OPEN })
   status: TournamentStatus;
+
+  @Column({ type: 'enum', enum: TournamentType, default: TournamentType.SOLO })
+  tournamentType: TournamentType;
 
   @ManyToOne(() => User, { eager: true })
   @JoinColumn({ name: 'organizer_id' })
@@ -96,6 +104,12 @@ export class Tournament {
 
   @Column({ nullable: true })
   bannerUrl: string;
+
+  @Column({ type: 'int', default: 0 })
+  viewsCount: number;
+
+  @Column({ type: 'int', default: 0 })
+  savesCount: number;
 
   @CreateDateColumn()
   createdAt: Date;

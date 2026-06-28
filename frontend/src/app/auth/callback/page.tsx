@@ -3,6 +3,7 @@
 import React, { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/auth.store';
+import { useOnboardingStore } from '@/lib/store/onboarding.store';
 import { api } from '@/lib/api';
 import { toast } from 'react-hot-toast';
 
@@ -10,6 +11,7 @@ function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useAuthStore();
+  const openOnboarding = useOnboardingStore((state) => state.open);
 
   useEffect(() => {
     const handleCallback = async () => {
@@ -28,6 +30,7 @@ function AuthCallbackContent() {
           
           if (!profile.onboardingCompleted) {
             router.push('/');
+            openOnboarding();
           } else {
             router.push('/dashboard');
           }
@@ -41,7 +44,7 @@ function AuthCallbackContent() {
     };
 
     handleCallback();
-  }, [searchParams, login, router]);
+  }, [searchParams, login, openOnboarding, router]);
 
   return (
     <div className="flex-1 flex flex-col justify-center items-center py-20">

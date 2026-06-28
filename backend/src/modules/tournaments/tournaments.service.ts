@@ -3,10 +3,12 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Tournament, TournamentStatus } from '../../entities/tournament.entity';
+import { SavedTournament } from '../../entities/saved-tournament.entity';
 import { CreateTournamentDto } from './dto/create-tournament.dto';
 import { FilterTournamentDto } from './dto/filter-tournament.dto';
 
@@ -15,12 +17,15 @@ export class TournamentsService {
   constructor(
     @InjectRepository(Tournament)
     private tournamentsRepo: Repository<Tournament>,
+    @InjectRepository(SavedTournament)
+    private savedTournamentsRepo: Repository<SavedTournament>,
   ) {}
 
   async findAll(filters: FilterTournamentDto) {
     const {
       game,
       format,
+      tournamentType,
       status,
       region,
       minPrize,
@@ -38,13 +43,20 @@ export class TournamentsService {
 
     if (game) qb.andWhere('t.game = :game', { game });
     if (format) qb.andWhere('t.format = :format', { format });
-    if (status) qb.andWhere('t.status = :status', { status });
+    if (tournamentType) qb.andWhere('t.tournamentType = :tournamentType', { tournamentType });
+    if (status) {
+      qb.andWhere('t.status = :status', { status });
+    } else {
+      qb.andWhere('t.status IN (:...statuses)', {
+        statuses: [TournamentStatus.OPEN, TournamentStatus.IN_PROGRESS],
+      });
+    }
     if (region) qb.andWhere('t.region = :region', { region });
     if (minPrize) qb.andWhere('t.prizePool >= :minPrize', { minPrize });
     if (maxEntryFee !== undefined) qb.andWhere('t.entryFee <= :maxEntryFee', { maxEntryFee });
     if (search) qb.andWhere('t.title ILIKE :search', { search: `%${search}%` });
 
-    const validSortFields = ['prizePool', 'startDate', 'entryFee', 'currentParticipants', 'createdAt'];
+    const validSortFields = ['prizePool', 'startDate', 'entryFee', 'currentParticipants', 'createdAt', 'viewsCount', 'savesCount'];
     const orderField = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
     qb.orderBy(`t.${orderField}`, sortOrder === 'ASC' ? 'ASC' : 'DESC');
 
@@ -138,5 +150,81 @@ export class TournamentsService {
       .set({ currentParticipants: () => '"current_participants" + 1' })
       .where('id = :id', { id: tournamentId })
       .execute();
+  }
+
+  async incrementViews(tournamentId: string): Promise<void> {
+    await this.tournamentsRepo
+      .createQueryBuilder()
+      .update(Tournament)
+      .set({ viewsCount: () => '"viewsCount" + 1' })
+      .where('id = :id', { id: tournamentId })
+      .execute();
+  }
+
+  async saveTournament(userId: string, tournamentId: string): Promise<{ message: string }> {
+    // Check if tournament exists
+    const tournament = await this.findOne(tournamentId);
+    
+    // Check if already saved
+    const existing = await this.savedTournamentsRepo.findOne({
+      where: { userId, tournamentId },
+    });
+
+    if (existing) {
+      throw new ConflictException('Tournament already saved');
+    }
+
+    // Save tournament
+    const saved = this.savedTournamentsRepo.create({ userId, tournamentId });
+    await this.savedTournamentsRepo.save(saved);
+
+    // Increment saves count
+    await this.tournamentsRepo
+      .createQueryBuilder()
+      .update(Tournament)
+      .set({ savesCount: () => '"savesCount" + 1' })
+      .where('id = :id', { id: tournamentId })
+      .execute();
+
+    return { message: 'Tournament saved successfully' };
+  }
+
+  async unsaveTournament(userId: string, tournamentId: string): Promise<{ message: string }> {
+    const saved = await this.savedTournamentsRepo.findOne({
+      where: { userId, tournamentId },
+    });
+
+    if (!saved) {
+      throw new NotFoundException('Saved tournament not found');
+    }
+
+    await this.savedTournamentsRepo.delete(saved.id);
+
+    // Decrement saves count
+    await this.tournamentsRepo
+      .createQueryBuilder()
+      .update(Tournament)
+      .set({ savesCount: () => '"savesCount" - 1' })
+      .where('id = :id', { id: tournamentId })
+      .execute();
+
+    return { message: 'Tournament removed from saved' };
+  }
+
+  async getSavedTournaments(userId: string): Promise<Tournament[]> {
+    const saved = await this.savedTournamentsRepo.find({
+      where: { userId },
+      relations: ['tournament', 'tournament.organizer'],
+      order: { savedAt: 'DESC' },
+    });
+
+    return saved.map((s) => s.tournament);
+  }
+
+  async isTournamentSaved(userId: string, tournamentId: string): Promise<boolean> {
+    const saved = await this.savedTournamentsRepo.findOne({
+      where: { userId, tournamentId },
+    });
+    return !!saved;
   }
 }

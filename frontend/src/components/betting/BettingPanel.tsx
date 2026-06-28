@@ -21,7 +21,7 @@ export default function BettingPanel({
   odds,
   onBetPlaced,
 }: BettingPanelProps) {
-  const { user, setUser } = useAuthStore();
+  const { user, refreshUser } = useAuthStore();
   const [selectedWinnerId, setSelectedWinnerId] = useState<string>('');
   const [amount, setAmount] = useState<number>(50);
   const [loading, setLoading] = useState(false);
@@ -63,12 +63,7 @@ export default function BettingPanel({
         predictedWinnerId: selectedWinnerId,
         amount,
       });
-      
-      // Update store credits
-      if (user) {
-        setUser({ ...user, credits: Number(user.credits) - amount });
-      }
-
+      await refreshUser();
       toast.success('Ставка успешно размещена!');
       setSelectedWinnerId('');
       onBetPlaced();

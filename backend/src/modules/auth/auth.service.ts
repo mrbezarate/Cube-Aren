@@ -55,7 +55,12 @@ export class AuthService {
   }
 
   generateTokens(user: any) {
-    const payload = { sub: user.id, email: user.email, role: user.role };
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      onboardingCompleted: user.onboardingCompleted ?? false,
+    };
     const accessToken = this.jwtService.sign(payload, {
       secret: this.configService.get('JWT_SECRET', 'fallback_secret'),
       expiresIn: this.configService.get('JWT_EXPIRES_IN', '15m'),
@@ -65,6 +70,25 @@ export class AuthService {
       expiresIn: this.configService.get('JWT_REFRESH_EXPIRES_IN', '7d'),
     });
     return { accessToken, refreshToken };
+  }
+
+  async refreshTokens(refreshToken: string) {
+    try {
+      const payload = this.jwtService.verify(refreshToken, {
+        secret: this.configService.get('JWT_REFRESH_SECRET', 'fallback_refresh'),
+      });
+
+      const user = await this.usersService.findById(payload.sub);
+      if (!user) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      const { passwordHash, ...userWithoutPassword } = user as any;
+      const tokens = this.generateTokens(userWithoutPassword);
+      return { user: userWithoutPassword, ...tokens };
+    } catch {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
   }
 
   async handleOAuthLogin(

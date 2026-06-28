@@ -53,12 +53,12 @@ export class ParticipantsService {
         );
         // Add to prize pool
         await this.tournamentsRepo.update(tournamentId, {
-          prizePool: () => `"prize_pool" + ${tournament.entryFee}`,
-          currentParticipants: () => '"current_participants" + 1',
+          prizePool: () => `"prizePool" + ${tournament.entryFee}`,
+          currentParticipants: () => '"currentParticipants" + 1',
         });
       } else {
         await this.tournamentsRepo.update(tournamentId, {
-          currentParticipants: () => '"current_participants" + 1',
+          currentParticipants: () => '"currentParticipants" + 1',
         });
       }
 

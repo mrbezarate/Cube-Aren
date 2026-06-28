@@ -20,7 +20,7 @@ import { ru } from 'date-fns/locale';
 export default function TournamentDetailPage() {
   const { id } = useParams();
   const router = useRouter();
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, refreshUser } = useAuthStore();
   
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -65,11 +65,10 @@ export default function TournamentDetailPage() {
       return;
     }
 
-    const teamName = prompt('Введите название команды (необязательно):') || undefined;
-
     setJoining(true);
     try {
-      await api.participants.join(tournament.id, teamName);
+      await api.participants.join(tournament.id);
+      await refreshUser();
       toast.success('Вы успешно зарегистрировались!');
       fetchTournamentData();
     } catch (err: any) {

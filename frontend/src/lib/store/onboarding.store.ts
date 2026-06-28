@@ -1,9 +1,10 @@
 import { create } from 'zustand';
 
 interface OnboardingAnswers {
-  role: string;
   games: string[];
-  goals: string[];
+  mainGame?: string;
+  gender?: string;
+  source?: string;
 }
 
 interface OnboardingState {
@@ -14,18 +15,23 @@ interface OnboardingState {
   setAnswer: <K extends keyof OnboardingAnswers>(key: K, value: OnboardingAnswers[K]) => void;
   complete: () => void;
   reset: () => void;
+  open: () => void;
+  close: () => void;
+  isOpen: boolean;
 }
 
 const initialAnswers: OnboardingAnswers = {
-  role: '',
   games: [],
-  goals: [],
+  mainGame: '',
+  gender: '',
+  source: '',
 };
 
 export const useOnboardingStore = create<OnboardingState>((set) => ({
   isCompleted: false,
   currentStep: 1,
   answers: initialAnswers,
+  isOpen: false,
   setStep: (step) => set({ currentStep: step }),
   setAnswer: (key, value) =>
     set((state) => ({
@@ -34,6 +40,17 @@ export const useOnboardingStore = create<OnboardingState>((set) => ({
         [key]: value,
       },
     })),
-  complete: () => set({ isCompleted: true }),
-  reset: () => set({ isCompleted: false, currentStep: 1, answers: initialAnswers }),
+  complete: () => set({ isCompleted: true, isOpen: false }),
+  reset: () => set({ 
+    isCompleted: false, 
+    currentStep: 1, 
+    answers: { games: [], mainGame: '', gender: '', source: '' },
+    isOpen: false 
+  }),
+  open: () => set({ 
+    currentStep: 1, 
+    answers: { games: [], mainGame: '', gender: '', source: '' },
+    isOpen: true 
+  }),
+  close: () => set({ isOpen: false }),
 }));

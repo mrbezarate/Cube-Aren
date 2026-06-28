@@ -1,6 +1,6 @@
 import { IsOptional, IsEnum, IsString, IsNumber, IsInt, Min } from 'class-validator';
 import { Type } from 'class-transformer';
-import { TournamentGame, TournamentFormat, TournamentStatus } from '../../../entities/tournament.entity';
+import { TournamentGame, TournamentFormat, TournamentStatus, TournamentType } from '../../../entities/tournament.entity';
 
 export class FilterTournamentDto {
   @IsOptional()
@@ -10,6 +10,10 @@ export class FilterTournamentDto {
   @IsOptional()
   @IsEnum(TournamentFormat)
   format?: TournamentFormat;
+
+  @IsOptional()
+  @IsEnum(TournamentType)
+  tournamentType?: TournamentType;
 
   @IsOptional()
   @IsEnum(TournamentStatus)
