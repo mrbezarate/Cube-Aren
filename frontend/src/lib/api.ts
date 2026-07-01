@@ -260,5 +260,48 @@ export const api = {
     unblockUser: (userId: string) => 
       apiInstance.delete<void>(`/settings/blocked/${userId}`).then(r => r.data),
   },
+  account: {
+    // Email
+    changeEmail: (newEmail: string) =>
+      apiInstance.post<{ message: string; email: string }>('/account/change-email', { newEmail }).then(r => r.data),
+    
+    // Password
+    changePassword: (currentPassword: string, newPassword: string) =>
+      apiInstance.post<{ message: string }>('/account/change-password', { currentPassword, newPassword }).then(r => r.data),
+    
+    // 2FA
+    enable2FA: () =>
+      apiInstance.post<{ message: string; secret: string; qrCode: string }>('/account/2fa/enable').then(r => r.data),
+    disable2FA: () =>
+      apiInstance.post<{ message: string }>('/account/2fa/disable').then(r => r.data),
+    verify2FA: (token: string) =>
+      apiInstance.post<{ valid: boolean; message: string }>('/account/2fa/verify', { token }).then(r => r.data),
+    
+    // OAuth
+    connectOAuth: (provider: 'google' | 'discord', oauthId: string) =>
+      apiInstance.post<{ message: string }>(`/account/oauth/${provider}/connect`, { oauthId }).then(r => r.data),
+    disconnectOAuth: (provider: 'google' | 'discord') =>
+      apiInstance.delete<{ message: string }>(`/account/oauth/${provider}/disconnect`).then(r => r.data),
+    
+    // Account deletion
+    requestAccountDeletion: () =>
+      apiInstance.post<{ message: string; deletionDate: Date }>('/account/delete/request').then(r => r.data),
+    cancelAccountDeletion: () =>
+      apiInstance.post<{ message: string }>('/account/delete/cancel').then(r => r.data),
+    deleteAccountNow: () =>
+      apiInstance.delete<void>('/account/delete/now').then(r => r.data),
+    
+    // Data export
+    exportUserData: () =>
+      apiInstance.get<any>('/account/export').then(r => r.data),
+    
+    // Sessions
+    getActiveSessions: () =>
+      apiInstance.get<{ sessions: any[] }>('/account/sessions').then(r => r.data),
+    terminateSession: (sessionId: string) =>
+      apiInstance.delete<void>(`/account/sessions/${sessionId}`).then(r => r.data),
+    terminateAllSessions: () =>
+      apiInstance.delete<void>('/account/sessions').then(r => r.data),
+  },
 };
 export default apiInstance;

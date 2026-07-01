@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/auth.store';
+import { api } from '@/lib/api';
 import { toast } from 'react-hot-toast';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
@@ -47,7 +48,16 @@ export default function AccountSettingsPage() {
       toast.error('Введите новый email');
       return;
     }
-    toast.success('Письмо с подтверждением отправлено на новый email');
+    try {
+      const result = await api.account.changeEmail(email);
+      toast.success(result.message);
+      // Update user in store
+      if (user) {
+        useAuthStore.getState().setUser({ ...user, email: result.email });
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Ошибка изменения email');
+    }
   };
 
   const handleChangePassword = async () => {
@@ -59,20 +69,49 @@ export default function AccountSettingsPage() {
       toast.error('Пароли не совпадают');
       return;
     }
-    toast.success('Пароль успешно изменён');
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
-  };
-
-  const handleDeleteAccount = () => {
-    if (confirm('Вы уверены? Аккаунт будет удалён через 30 дней. Вы сможете отменить удаление в течение этого времени.')) {
-      toast.success('Аккаунт помечен для удаления');
+    try {
+      const result = await api.account.changePassword(currentPassword, newPassword);
+      toast.success(result.message);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Ошибка изменения пароля');
     }
   };
 
-  const handleExportData = () => {
-    toast.success('Экспорт данных начат. Вы получите ссылку на email.');
+  const handleDeleteAccount = async () => {
+    if (
+      confirm(
+        'Вы уверены? Аккаунт будет удалён через 30 дней. Вы сможете отменить удаление в течение этого времени.',
+      )
+    ) {
+      try {
+        const result = await api.account.requestAccountDeletion();
+        toast.success(result.message);
+      } catch (error: any) {
+        toast.error(error.response?.data?.message || 'Ошибка удаления аккаунта');
+      }
+    }
+  };
+
+  const handleExportData = async () => {
+    try {
+      const data = await api.account.exportUserData();
+      // Create download link
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `user-data-${user?.username}-${new Date().toISOString()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      toast.success('Данные экспортированы');
+    } catch (error: any) {
+      toast.error('Ошибка экспорта данных');
+    }
   };
 
   if (loading) {

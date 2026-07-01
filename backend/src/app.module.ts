@@ -13,6 +13,7 @@ import { TeamsModule } from './modules/teams/teams.module';
 import { FriendsModule } from './modules/friends/friends.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { SettingsModule } from './modules/settings/settings.module';
+import { AccountModule } from './modules/account/account.module';
 import { User } from './entities/user.entity';
 import { Tournament } from './entities/tournament.entity';
 import { Participant } from './entities/participant.entity';
@@ -74,6 +75,7 @@ import { BlockedUser } from './entities/blocked-user.entity';
     FriendsModule,
     ChatModule,
     SettingsModule,
+    AccountModule,
   ],
   providers: [
     // Глобальный guard для rate limiting
