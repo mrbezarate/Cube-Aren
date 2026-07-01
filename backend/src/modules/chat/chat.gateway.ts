@@ -7,10 +7,11 @@ import {
   ConnectedSocket,
   MessageBody,
 } from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
 import { UseGuards } from '@nestjs/common';
+import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { ChatService } from './chat.service';
+import { WsThrottleGuard } from './guards/ws-throttle.guard';
 
 @WebSocketGateway({
   cors: {
@@ -83,6 +84,16 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const messages = await this.chatService.getMessages(roomId);
     client.emit('messages', messages);
     
+    // Автоматически помечаем сообщения как прочитанные
+    await this.chatService.markMessagesAsRead(roomId, userId);
+    
+    // Уведомляем собеседника что сообщения прочитаны
+    const companionId = room.user1Id === userId ? room.user2Id : room.user1Id;
+    const companionSocketId = this.connectedUsers.get(companionId);
+    if (companionSocketId) {
+      this.server.to(companionSocketId).emit('messages_read', { roomId });
+    }
+    
     return { success: true };
   }
 
@@ -96,6 +107,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('send_message')
+  @UseGuards(WsThrottleGuard) // 1 сообщение в 5 секунд
   async handleSendMessage(
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { roomId: string; content: string },
@@ -110,26 +122,43 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         return { error: 'Access denied' };
       }
 
+      // Определяем получателя
+      const recipientId = room.user1Id === userId ? room.user2Id : room.user1Id;
+      const isRecipientOnline = this.connectedUsers.has(recipientId);
+
       // Сохраняем сообщение
-      const message = await this.chatService.createMessage(roomId, userId, content);
+      const message = await this.chatService.createMessage(roomId, userId, content, isRecipientOnline);
 
       // Отправляем сообщение всем в комнате
       this.server.to(roomId).emit('new_message', message);
 
-      // Уведомляем получателя если он онлайн
-      const recipientId = room.user1Id === userId ? room.user2Id : room.user1Id;
+      // Уведомляем получателя если он онлайн (но не в комнате)
       const recipientSocketId = this.connectedUsers.get(recipientId);
       if (recipientSocketId) {
-        this.server.to(recipientSocketId).emit('room_updated', {
-          roomId,
-          lastMessage: content,
-          lastMessageAt: new Date(),
-        });
+        // Проверяем находится ли получатель в этой комнате
+        const recipientSocket = this.server.sockets.sockets.get(recipientSocketId);
+        const isInRoom = recipientSocket?.rooms.has(roomId);
+        
+        if (!isInRoom) {
+          // Если не в комнате - отправляем уведомление
+          this.server.to(recipientSocketId).emit('room_updated', {
+            roomId,
+            lastMessage: content,
+            lastMessageAt: new Date(),
+          });
+        } else {
+          // Если в комнате - сразу помечаем как прочитанное
+          await this.chatService.markMessagesAsRead(roomId, recipientId);
+          this.server.to(roomId).emit('messages_read', { roomId });
+        }
       }
 
       return { success: true, message };
     } catch (error) {
       console.error('Send message error:', error);
+      if (error.message?.includes('Слишком частые')) {
+        return { error: error.message };
+      }
       return { error: 'Failed to send message' };
     }
   }
@@ -161,5 +190,29 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       userId,
       isTyping: data.isTyping,
     });
+  }
+
+  // Отправить уведомление о новой подписке
+  sendFollowNotification(recipientId: string, followerId: string) {
+    const recipientSocketId = this.connectedUsers.get(recipientId);
+    if (recipientSocketId) {
+      this.server.to(recipientSocketId).emit('follow_update', {
+        type: 'new_follower',
+        followerId,
+      });
+      console.log(`[ChatGateway] Sent follow notification to ${recipientId}`);
+    }
+  }
+
+  // Отправить уведомление об отписке
+  sendUnfollowNotification(recipientId: string, followerId: string) {
+    const recipientSocketId = this.connectedUsers.get(recipientId);
+    if (recipientSocketId) {
+      this.server.to(recipientSocketId).emit('follow_update', {
+        type: 'unfollowed',
+        followerId,
+      });
+      console.log(`[ChatGateway] Sent unfollow notification to ${recipientId}`);
+    }
   }
 }

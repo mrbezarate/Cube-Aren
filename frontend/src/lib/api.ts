@@ -15,6 +15,10 @@ import {
   Team,
   TeamJoinRequest,
   UserSearchResult,
+  PrivacySettings,
+  NotificationSettings,
+  UserPreferences,
+  BlockedUser,
 } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/api';
@@ -53,6 +57,22 @@ apiInstance.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     const isRefreshRequest = originalRequest?.url?.includes('/auth/refresh');
+
+    // Обработка rate limit ошибок
+    if (error.response?.status === 429) {
+      const message = error.response?.data?.message || 'Слишком много запросов. Подождите немного.';
+      if (typeof window !== 'undefined') {
+        // Показываем toast только если это не было показано недавно
+        const lastToast = sessionStorage.getItem('lastRateLimitToast');
+        const now = Date.now();
+        if (!lastToast || now - parseInt(lastToast) > 3000) {
+          const { toast } = await import('react-hot-toast');
+          toast.error(message, { duration: 3000 });
+          sessionStorage.setItem('lastRateLimitToast', now.toString());
+        }
+      }
+      return Promise.reject(error);
+    }
 
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !isRefreshRequest) {
       const refreshToken = useAuthStore.getState().refreshToken;
@@ -132,6 +152,10 @@ export const api = {
       apiInstance.get<{ isFollowing: boolean }>(`/users/${id}/is-following/${targetId}`).then(r => r.data),
     areFriends: (id: string, targetId: string) => 
       apiInstance.get<{ areFriends: boolean }>(`/users/${id}/are-friends/${targetId}`).then(r => r.data),
+    trackProfileView: (id: string) => 
+      apiInstance.post<{ message: string }>(`/users/${id}/view`).then(r => r.data),
+    getProfileVisitors: (id: string) => 
+      apiInstance.get<{ total: number; views: any[] }>(`/users/${id}/visitors`).then(r => r.data),
   },
   teams: {
     getAll: (params?: { game?: GameType; page?: number; limit?: number }) =>
@@ -173,6 +197,7 @@ export const api = {
     updateStatus: (id: string, status: string) => apiInstance.patch<Tournament>(`/tournaments/${id}/status`, { status }).then(r => r.data),
     save: (id: string) => apiInstance.post<{ message: string }>(`/tournaments/${id}/save`).then(r => r.data),
     unsave: (id: string) => apiInstance.delete<{ message: string }>(`/tournaments/${id}/save`).then(r => r.data),
+    trackView: (id: string) => apiInstance.post<{ message: string }>(`/tournaments/${id}/view`).then(r => r.data),
   },
   participants: {
     join: (tournamentId: string, teamName?: string) => apiInstance.post<Participant>(`/tournaments/${tournamentId}/join`, { teamName }).then(r => r.data),
@@ -192,21 +217,48 @@ export const api = {
     deposit: (amount: number) => apiInstance.post<{ message: string; transaction: Transaction }>('/wallet/deposit', { amount }).then(r => r.data),
   },
   friends: {
-    sendRequest: (userId: string) => apiInstance.post<{ message: string }>(`/friends/request/${userId}`).then(r => r.data),
-    acceptRequest: (requestId: string) => apiInstance.post<{ message: string }>(`/friends/accept/${requestId}`).then(r => r.data),
-    rejectRequest: (requestId: string) => apiInstance.post<{ message: string }>(`/friends/reject/${requestId}`).then(r => r.data),
-    cancelRequest: (requestId: string) => apiInstance.delete<{ message: string }>(`/friends/cancel/${requestId}`).then(r => r.data),
+    follow: (userId: string) => apiInstance.post<{ message: string }>(`/friends/follow/${userId}`).then(r => r.data),
+    unfollow: (userId: string) => apiInstance.delete<{ message: string }>(`/friends/unfollow/${userId}`).then(r => r.data),
     removeFriend: (friendId: string) => apiInstance.delete<{ message: string }>(`/friends/remove/${friendId}`).then(r => r.data),
     getIncoming: () => apiInstance.get<any[]>('/friends/incoming').then(r => r.data),
-    getOutgoing: () => apiInstance.get<any[]>('/friends/outgoing').then(r => r.data),
     getFriends: () => apiInstance.get<any[]>('/friends/list').then(r => r.data),
-    getStatus: (userId: string) => apiInstance.get<{ status: string; requestId?: string }>(`/friends/status/${userId}`).then(r => r.data),
+    getStatus: (userId: string) => apiInstance.get<{ status: string }>(`/friends/status/${userId}`).then(r => r.data),
   },
   chat: {
     getRooms: () => apiInstance.get<any[]>('/chat/rooms').then(r => r.data),
     getOrCreateRoom: (userId: string) => apiInstance.post<any>(`/chat/room/${userId}`).then(r => r.data),
     getRoom: (roomId: string) => apiInstance.get<any>(`/chat/room/${roomId}`).then(r => r.data),
     getMessages: (roomId: string) => apiInstance.get<any[]>(`/chat/room/${roomId}/messages`).then(r => r.data),
+  },
+  settings: {
+    // Privacy
+    getPrivacySettings: () => apiInstance.get<PrivacySettings>('/settings/privacy').then(r => r.data),
+    updatePrivacySettings: (data: Partial<PrivacySettings>) => 
+      apiInstance.put<PrivacySettings>('/settings/privacy', data).then(r => r.data),
+    clearProfileVisitorsHistory: () => 
+      apiInstance.delete<void>('/settings/privacy/history/visitors').then(r => r.data),
+    clearTournamentHistory: () => 
+      apiInstance.delete<void>('/settings/privacy/history/tournaments').then(r => r.data),
+    
+    // Notifications
+    getNotificationSettings: () => 
+      apiInstance.get<NotificationSettings>('/settings/notifications').then(r => r.data),
+    updateNotificationSettings: (data: Partial<NotificationSettings>) => 
+      apiInstance.put<NotificationSettings>('/settings/notifications', data).then(r => r.data),
+    
+    // Preferences
+    getUserPreferences: () => 
+      apiInstance.get<UserPreferences>('/settings/preferences').then(r => r.data),
+    updateUserPreferences: (data: Partial<UserPreferences>) => 
+      apiInstance.put<UserPreferences>('/settings/preferences', data).then(r => r.data),
+    
+    // Blocked users
+    getBlockedUsers: () => 
+      apiInstance.get<BlockedUser[]>('/settings/blocked').then(r => r.data),
+    blockUser: (userId: string, reason?: string) => 
+      apiInstance.post<BlockedUser>(`/settings/blocked/${userId}`, { reason }).then(r => r.data),
+    unblockUser: (userId: string) => 
+      apiInstance.delete<void>(`/settings/blocked/${userId}`).then(r => r.data),
   },
 };
 export default apiInstance;

@@ -1,9 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { ChatRoom } from '../../entities/chat-room.entity';
 import { Message } from '../../entities/message.entity';
-import { Friendship } from '../../entities/friendship.entity';
 
 @Injectable()
 export class ChatService {
@@ -12,45 +11,74 @@ export class ChatService {
     private chatRoomRepo: Repository<ChatRoom>,
     @InjectRepository(Message)
     private messageRepo: Repository<Message>,
-    @InjectRepository(Friendship)
-    private friendshipRepo: Repository<Friendship>,
+    private dataSource: DataSource,
   ) {}
 
   // Получить или создать комнату между двумя пользователями
   async getOrCreateRoom(user1Id: string, user2Id: string): Promise<ChatRoom> {
-    // Проверяем что пользователи друзья
+    console.log(`[ChatService] getOrCreateRoom: user1=${user1Id}, user2=${user2Id}`);
     const [minId, maxId] = [user1Id, user2Id].sort();
+    console.log(`[ChatService] Sorted IDs: min=${minId}, max=${maxId}`);
     
-    const areFriends = await this.friendshipRepo.findOne({
-      where: { user1Id: minId, user2Id: maxId },
-    });
+    // Используем transaction для атомарности
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    if (!areFriends) {
-      throw new BadRequestException('Вы можете писать только друзьям');
-    }
-
-    // Ищем существующую комнату
-    let room = await this.chatRoomRepo.findOne({
-      where: { user1Id: minId, user2Id: maxId },
-      relations: ['user1', 'user2'],
-    });
-
-    if (!room) {
-      // Создаем новую комнату
-      room = this.chatRoomRepo.create({
-        user1Id: minId,
-        user2Id: maxId,
-      });
-      await this.chatRoomRepo.save(room);
+    try {
+      // Проверяем что пользователи друзья = взаимная подписка
+      const followRepo = queryRunner.manager.getRepository('Follow');
       
-      // Загружаем с relations
-      room = await this.chatRoomRepo.findOne({
+      const follow1 = await followRepo.findOne({
+        where: { followerId: user1Id, followingId: user2Id },
+      });
+      const follow2 = await followRepo.findOne({
+        where: { followerId: user2Id, followingId: user1Id },
+      });
+
+      console.log(`[ChatService] Follow check: follow1=${!!follow1}, follow2=${!!follow2}`);
+
+      if (!follow1 || !follow2) {
+        await queryRunner.rollbackTransaction();
+        throw new BadRequestException('Вы можете писать только друзьям (нужна взаимная подписка)');
+      }
+
+      // Ищем существующую комнату (с блокировкой строки)
+      let room = await queryRunner.manager.findOne(ChatRoom, {
+        where: { user1Id: minId, user2Id: maxId },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!room) {
+        console.log(`[ChatService] Creating new room`);
+        // Создаем новую комнату
+        room = queryRunner.manager.create(ChatRoom, {
+          user1Id: minId,
+          user2Id: maxId,
+        });
+        await queryRunner.manager.save(room);
+        console.log(`[ChatService] Room created: ${room.id}`);
+      } else {
+        console.log(`[ChatService] Existing room found: ${room.id}`);
+      }
+
+      await queryRunner.commitTransaction();
+
+      // Загружаем с relations после коммита
+      const fullRoom = await this.chatRoomRepo.findOne({
         where: { id: room.id },
         relations: ['user1', 'user2'],
       });
+      
+      console.log(`[ChatService] Returning room with relations: ${fullRoom?.id}`);
+      return fullRoom;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      console.error(`[ChatService] Error in getOrCreateRoom:`, error);
+      throw error;
+    } finally {
+      await queryRunner.release();
     }
-
-    return room;
   }
 
   // Получить комнату по ID
@@ -69,6 +97,7 @@ export class ChatService {
 
   // Получить все комнаты пользователя
   async getUserRooms(userId: string) {
+    console.log(`[ChatService] getUserRooms for userId: ${userId}`);
     const rooms = await this.chatRoomRepo
       .createQueryBuilder('room')
       .leftJoinAndSelect('room.user1', 'user1')
@@ -78,8 +107,11 @@ export class ChatService {
       .addOrderBy('room.createdAt', 'DESC')
       .getMany();
 
+    console.log(`[ChatService] Found ${rooms.length} rooms`);
+
     // Фильтруем комнаты где оба пользователя существуют
     const validRooms = rooms.filter(room => room.user1 !== null && room.user2 !== null);
+    console.log(`[ChatService] Valid rooms: ${validRooms.length}`);
 
     // Подсчитываем непрочитанные сообщения для каждой комнаты
     const roomsWithUnread = await Promise.all(
@@ -110,15 +142,17 @@ export class ChatService {
       }),
     );
 
+    console.log(`[ChatService] Returning rooms with unread counts`);
     return roomsWithUnread;
   }
 
   // Создать сообщение
-  async createMessage(roomId: string, senderId: string, content: string): Promise<Message> {
+  async createMessage(roomId: string, senderId: string, content: string, isDelivered = true): Promise<Message> {
     const message = this.messageRepo.create({
       roomId,
       senderId,
       content,
+      isDelivered,
     });
 
     await this.messageRepo.save(message);

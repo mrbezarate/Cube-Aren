@@ -20,6 +20,7 @@ export interface User {
   losses: number;
   followersCount: number;
   followingCount: number;
+  profileViewsCount?: number;
   mainGame?: GameType;
   credits: number;
   onboardingCompleted: boolean;
@@ -67,8 +68,16 @@ export interface UserProfile extends User {
   mainTeam?: TeamSummary | null;
   canChangeUsername: boolean;
   canChangeAvatar: boolean;
+  canChangeBanner: boolean;
+  canChangeGender: boolean;
   usernameChangeDays: number;
   avatarChangeDays: number;
+  avatarChangeHours: number;
+  bannerChangeDays: number;
+  bannerChangeHours: number;
+  genderChangeDays: number;
+  genderChangeHours: number;
+  profileViewsCount: number;
 }
 
 export interface TeamSummary {
@@ -256,4 +265,84 @@ export interface OddsData {
   totalBets: number;
   bettorCount: number;
   odds: number;
+}
+
+// Settings Types
+export type PrivacyLevel = 'everyone' | 'friends' | 'nobody';
+export type ProfileVisibility = 'public' | 'friends' | 'private';
+export type Language = 'ru' | 'en' | 'ua';
+export type Theme = 'dark' | 'light' | 'system';
+export type ColorAccent = 'purple' | 'blue' | 'green' | 'gold';
+export type TimeFormat = '24h' | '12h';
+export type ImageQuality = 'high' | 'medium' | 'low';
+
+export interface PrivacySettings {
+  profileVisibility: ProfileVisibility;
+  canMessageMe: PrivacyLevel;
+  canSeeStats: PrivacyLevel;
+  canSeeFriends: PrivacyLevel;
+  canInviteToTeam: PrivacyLevel;
+  showOnlineStatus: PrivacyLevel;
+  showProfileVisitors: boolean;
+  showTournamentHistory: boolean;
+}
+
+export interface NotificationSettings {
+  // Email notifications
+  emailNewTournament: boolean;
+  emailTournamentStart: boolean;
+  emailBetResult: boolean;
+  emailTeamRequest: boolean;
+  emailTeamInvite: boolean;
+  emailNewMessage: boolean;
+  emailWeeklyDigest: boolean;
+  emailMarketing: boolean;
+  // Push notifications
+  pushNewMessage: boolean;
+  pushNewFollower: boolean;
+  pushTournamentStart: boolean;
+  pushBetResult: boolean;
+  pushTeamRequest: boolean;
+  // In-app notifications
+  inAppShowBadges: boolean;
+  inAppShowRequests: boolean;
+  inAppShowNotifications: boolean;
+}
+
+export interface UserPreferences {
+  // Interface
+  language: Language;
+  theme: Theme;
+  colorAccent: ColorAccent;
+  // Display
+  timezone: string;
+  dateFormat: string;
+  timeFormat: TimeFormat;
+  // Games
+  hideUninterestingTournaments: boolean;
+  showOnlyRegionalTournaments: boolean;
+  minPrizePoolFilter: number;
+  // Performance
+  enableAnimations: boolean;
+  autoplayVideos: boolean;
+  preloadImages: boolean;
+  imageQuality: ImageQuality;
+  // Content
+  showAdultContent: boolean;
+  filterProfanity: boolean;
+  hideSpoilers: boolean;
+}
+
+export interface BlockedUser {
+  id: string;
+  userId: string;
+  blockedUserId: string;
+  blockedUser: {
+    id: string;
+    username: string;
+    displayName?: string;
+    avatarUrl?: string;
+  };
+  reason?: string;
+  blockedAt: string;
 }

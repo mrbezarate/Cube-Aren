@@ -5,23 +5,26 @@ import {
   CreateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { User } from './user.entity';
 import { ChatRoom } from './chat-room.entity';
 
 @Entity('messages')
+@Index(['roomId', 'createdAt'])
+@Index(['senderId', 'isRead'])
 export class Message {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => ChatRoom)
+  @ManyToOne(() => ChatRoom, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'room_id' })
   room: ChatRoom;
 
   @Column()
   roomId: string;
 
-  @ManyToOne(() => User, { eager: true })
+  @ManyToOne(() => User, { eager: true, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'sender_id' })
   sender: User;
 
@@ -33,6 +36,9 @@ export class Message {
 
   @Column({ default: false })
   isRead: boolean;
+
+  @Column({ default: true })
+  isDelivered: boolean; // Доставлено получателю (он онлайн)
 
   @CreateDateColumn()
   createdAt: Date;

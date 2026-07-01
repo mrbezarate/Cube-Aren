@@ -7,11 +7,10 @@ import { ChatService } from './chat.service';
 import { ChatController } from './chat.controller';
 import { ChatRoom } from '../../entities/chat-room.entity';
 import { Message } from '../../entities/message.entity';
-import { Friendship } from '../../entities/friendship.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([ChatRoom, Message, Friendship]),
+    TypeOrmModule.forFeature([ChatRoom, Message]),
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
@@ -22,6 +21,6 @@ import { Friendship } from '../../entities/friendship.entity';
   ],
   controllers: [ChatController],
   providers: [ChatGateway, ChatService],
-  exports: [ChatService],
+  exports: [ChatService, ChatGateway],
 })
 export class ChatModule {}

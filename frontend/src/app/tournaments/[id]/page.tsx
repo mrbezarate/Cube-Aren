@@ -37,7 +37,8 @@ export default function TournamentDetailPage() {
         api.bets.getOdds(id),
       ]);
       setTournament(tourData);
-      setParticipants(partData);
+      // Фильтруем participants с null user (на случай удалённых пользователей)
+      setParticipants(partData.filter(p => p.user !== null));
       setOdds(oddsData);
     } catch (err) {
       toast.error('Ошибка загрузки данных турнира');
@@ -115,16 +116,16 @@ export default function TournamentDetailPage() {
   if (!tournament) return null;
 
   const isOrganizer = user ? user.id === tournament.organizerId : false;
-  const isJoined = participants.some((p) => p.user.id === user?.id);
+  const isJoined = participants.some((p) => p.user?.id === user?.id);
   const formattedDate = format(new Date(tournament.startDate), 'd MMMM yyyy, HH:mm', { locale: ru });
 
-  const statusColors = {
+  const statusColors: Record<string, 'gray' | 'green' | 'blue' | 'gold' | 'red'> = {
     draft: 'gray',
     open: 'green',
     in_progress: 'blue',
-    completed: 'purple',
+    completed: 'gold',
     cancelled: 'red',
-  } as const;
+  };
 
   const statusLabels = {
     draft: 'Черновик',

@@ -77,7 +77,7 @@ export default function RegisterPage() {
       {/* Background radial glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-neon-blue/5 filter blur-[100px] pointer-events-none" />
 
-      <Card hoverEffect={false} className="w-full max-w-md p-6 sm:p-8 space-y-6 z-10">
+      <Card hover={false} className="w-full max-w-md p-6 sm:p-8 space-y-6 z-10">
         <div className="text-center space-y-2">
           <h1 className="font-orbitron font-black text-2xl text-white tracking-widest uppercase">
             РЕГИСТРАЦИЯ

@@ -9,41 +9,58 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        arena: {
-          dark: "#0a0a0f",
-          card: "#12121a",
-          border: "#1e1e2e",
+        // Premium dark palette
+        bg: {
+          primary: '#0c0c0f',
+          secondary: '#111114',
+          tertiary: '#1a1a1f',
+          elevated: '#22222a',
         },
-        neon: {
-          purple: "#7c3aed",
-          blue: "#2563eb",
-          gold: "#f59e0b",
-          green: "#10b981",
-          red: "#ef4444",
+        text: {
+          primary: '#f5f5f7',
+          secondary: '#a1a1aa',
+          tertiary: '#71717a',
+          muted: '#52525b',
+        },
+        accent: {
+          primary: '#6366f1',
+          'primary-hover': '#818cf8',
+          secondary: '#22d3ee',
+          success: '#10b981',
+          warning: '#f59e0b',
+          danger: '#ef4444',
+        },
+        border: {
+          subtle: 'rgba(255, 255, 255, 0.06)',
+          default: 'rgba(255, 255, 255, 0.1)',
+          strong: 'rgba(255, 255, 255, 0.15)',
+        },
+        // Legacy aliases (for compatibility)
+        arena: {
+          dark: "#0c0c0f",
+          card: "#111114",
+          border: "rgba(255, 255, 255, 0.1)",
         },
       },
       fontFamily: {
-        orbitron: ["var(--font-orbitron)", "sans-serif"],
-        space: ["var(--font-space-grotesk)", "sans-serif"],
+        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        // Legacy aliases
+        orbitron: ['Inter', 'sans-serif'],
+        space: ['Inter', 'sans-serif'],
       },
       animation: {
-        'pulse-neon': 'pulseNeon 2s infinite',
-        float: 'float 6s ease-in-out infinite',
+        'fade-in': 'fadeIn 0.3s ease-out',
+        'slide-up': 'slideUp 0.4s ease-out',
       },
       keyframes: {
-        pulseNeon: {
-          '0%, 100%': { boxShadow: '0 0 5px #7c3aed, 0 0 10px #7c3aed' },
-          '50%': { boxShadow: '0 0 15px #7c3aed, 0 0 30px #7c3aed' },
+        fadeIn: {
+          '0%': { opacity: '0', transform: 'translateY(8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
         },
-        float: {
-          '0%, 100%': { transform: 'translateY(0px)' },
-          '50%': { transform: 'translateY(-10px)' },
+        slideUp: {
+          '0%': { opacity: '0', transform: 'translateY(20px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
         },
-      },
-      boxShadow: {
-        'neon-purple': '0 0 10px rgba(124, 58, 237, 0.5), 0 0 20px rgba(124, 58, 237, 0.2)',
-        'neon-blue': '0 0 10px rgba(37, 99, 235, 0.5), 0 0 20px rgba(37, 99, 235, 0.2)',
-        'neon-gold': '0 0 10px rgba(245, 158, 11, 0.5), 0 0 20px rgba(245, 158, 11, 0.2)',
       },
     },
   },

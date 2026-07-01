@@ -9,6 +9,7 @@ import { PlayerStats } from '../../entities/player-stats.entity';
 import { Follow } from '../../entities/follow.entity';
 import { Team } from '../../entities/team.entity';
 import { TeamMember } from '../../entities/team-member.entity';
+import { ProfileView } from '../../entities/profile-view.entity';
 import { AuthModule } from '../auth/auth.module';
 
 @Module({
@@ -21,6 +22,7 @@ import { AuthModule } from '../auth/auth.module';
       Follow,
       Team,
       TeamMember,
+      ProfileView,
     ]),
     forwardRef(() => AuthModule),
   ],

@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { TournamentsModule } from './modules/tournaments/tournaments.module';
@@ -10,6 +12,7 @@ import { WalletModule } from './modules/wallet/wallet.module';
 import { TeamsModule } from './modules/teams/teams.module';
 import { FriendsModule } from './modules/friends/friends.module';
 import { ChatModule } from './modules/chat/chat.module';
+import { SettingsModule } from './modules/settings/settings.module';
 import { User } from './entities/user.entity';
 import { Tournament } from './entities/tournament.entity';
 import { Participant } from './entities/participant.entity';
@@ -26,10 +29,25 @@ import { FriendRequest } from './entities/friend-request.entity';
 import { Friendship } from './entities/friendship.entity';
 import { ChatRoom } from './entities/chat-room.entity';
 import { Message } from './entities/message.entity';
+import { TournamentView } from './entities/tournament-view.entity';
+import { ProfileView } from './entities/profile-view.entity';
+import { TournamentReport } from './entities/tournament-report.entity';
+import { PrivacySettings } from './entities/privacy-settings.entity';
+import { NotificationSettings } from './entities/notification-settings.entity';
+import { UserPreferences } from './entities/user-preferences.entity';
+import { BlockedUser } from './entities/blocked-user.entity';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    // Глобальный rate limiting: 100 запросов в минуту
+    ThrottlerModule.forRoot([
+      {
+        name: 'default',
+        ttl: 60000, // 60 секунд
+        limit: 100, // 100 запросов
+      },
+    ]),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
@@ -39,7 +57,7 @@ import { Message } from './entities/message.entity';
         username: configService.get('DB_USER', 'arena_user'),
         password: configService.get('DB_PASSWORD', 'arena_secret_password'),
         database: configService.get('DB_NAME', 'underground_arena'),
-        entities: [User, Tournament, Participant, Bet, Transaction, OnboardingAnswer, SavedTournament, PlayerStats, Follow, Team, TeamMember, TeamJoinRequest, FriendRequest, Friendship, ChatRoom, Message],
+        entities: [User, Tournament, Participant, Bet, Transaction, OnboardingAnswer, SavedTournament, PlayerStats, Follow, Team, TeamMember, TeamJoinRequest, FriendRequest, Friendship, ChatRoom, Message, TournamentView, ProfileView, TournamentReport, PrivacySettings, NotificationSettings, UserPreferences, BlockedUser],
         synchronize: true,
         logging: configService.get('NODE_ENV') === 'development',
         ssl: false,
@@ -55,6 +73,14 @@ import { Message } from './entities/message.entity';
     TeamsModule,
     FriendsModule,
     ChatModule,
+    SettingsModule,
+  ],
+  providers: [
+    // Глобальный guard для rate limiting
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
   ],
 })
 export class AppModule {}

@@ -127,7 +127,7 @@ export default function DashboardPage() {
             <h1 className="font-orbitron font-black text-2xl text-white uppercase tracking-wider">
               Личный кабинет
             </h1>
-            <Badge variant="purple">{user.role}</Badge>
+            <Badge variant="primary">{user.role}</Badge>
           </div>
           <span className="text-xs text-gray-400">Добро пожаловать, {user.username} ({user.email})</span>
         </div>

@@ -6,43 +6,54 @@ import clsx from 'clsx';
 
 interface CardProps extends Omit<HTMLMotionProps<'div'>, 'children'> {
   children?: React.ReactNode;
-  neonColor?: 'purple' | 'blue' | 'gold' | 'none';
-  hoverEffect?: boolean;
+  variant?: 'default' | 'elevated' | 'ghost';
+  hover?: boolean;
+  padding?: 'none' | 'sm' | 'md' | 'lg';
+  neonColor?: 'blue' | 'purple' | 'gold' | 'green' | 'red';
 }
 
 export default function Card({
   children,
   className,
-  neonColor = 'none',
-  hoverEffect = true,
+  variant = 'default',
+  hover = true,
+  padding = 'md',
+  neonColor,
   ...props
 }: CardProps) {
-  const neonBorders = {
-    purple: 'border border-neon-purple/20 shadow-neon-purple/10',
-    blue: 'border border-neon-blue/20 shadow-neon-blue/10',
-    gold: 'border border-neon-gold/20 shadow-neon-gold/10',
-    none: 'border border-arena-border',
+  const variants = {
+    default: 'bg-bg-secondary border border-white/[0.06]',
+    elevated: 'bg-bg-tertiary border border-white/[0.06] shadow-lg',
+    ghost: 'bg-transparent border border-white/[0.04]',
+  };
+
+  const paddings = {
+    none: '',
+    sm: 'p-4',
+    md: 'p-5',
+    lg: 'p-6',
+  };
+
+  const neonStyles = {
+    blue: 'shadow-[0_0_20px_rgba(59,130,246,0.3)] border-blue-500/50',
+    purple: 'shadow-[0_0_20px_rgba(147,51,234,0.3)] border-purple-500/50',
+    gold: 'shadow-[0_0_20px_rgba(234,179,8,0.3)] border-yellow-500/50',
+    green: 'shadow-[0_0_20px_rgba(34,197,94,0.3)] border-green-500/50',
+    red: 'shadow-[0_0_20px_rgba(239,68,68,0.3)] border-red-500/50',
   };
 
   return (
     <motion.div
-      whileHover={hoverEffect ? { y: -4, transition: { duration: 0.2 } } : {}}
+      whileHover={hover ? { y: -2, transition: { duration: 0.2 } } : {}}
       className={clsx(
-        'glass-panel rounded-xl p-5 overflow-hidden relative',
-        neonBorders[neonColor],
+        'rounded-xl overflow-hidden',
+        variants[variant],
+        paddings[padding],
+        neonColor && neonStyles[neonColor],
         className
       )}
       {...props}
     >
-      {/* Subtle background glow */}
-      {neonColor !== 'none' && (
-        <div className={clsx(
-          'absolute -top-12 -left-12 w-24 h-24 rounded-full filter blur-[40px] opacity-10 pointer-events-none',
-          neonColor === 'purple' && 'bg-neon-purple',
-          neonColor === 'blue' && 'bg-neon-blue',
-          neonColor === 'gold' && 'bg-neon-gold'
-        )} />
-      )}
       {children}
     </motion.div>
   );

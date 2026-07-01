@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useSocket } from '@/lib/hooks/useSocket';
 import { useAuthStore } from '@/lib/store/auth.store';
@@ -32,25 +32,40 @@ interface Message {
     displayName?: string;
     avatarUrl?: string;
   };
+  isRead: boolean;
+  isDelivered: boolean;
   createdAt: string;
 }
 
-export default function ChatPage() {
+interface Friend {
+  id: string;
+  username: string;
+  displayName?: string;
+  avatarUrl?: string;
+  mainGame?: string;
+}
+
+function ChatPageContent() {
   const searchParams = useSearchParams();
   const roomIdFromUrl = searchParams.get('room');
   const { isAuthenticated, user } = useAuthStore();
   const { socket, isConnected } = useSocket();
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
+  const [friends, setFriends] = useState<Friend[]>([]);
   const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null);
+  const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadingRoom, setLoadingRoom] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isTyping, setIsTyping] = useState(false);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (isAuthenticated) {
       loadRooms();
+      loadFriends();
     }
   }, [isAuthenticated]);
 
@@ -84,7 +99,12 @@ export default function ChatPage() {
         setRooms((prev) =>
           prev.map((room) =>
             room.id === data.roomId
-              ? { ...room, lastMessage: data.lastMessage, lastMessageAt: data.lastMessageAt }
+              ? { 
+                  ...room, 
+                  lastMessage: data.lastMessage, 
+                  lastMessageAt: data.lastMessageAt,
+                  unreadCount: selectedRoom?.id === data.roomId ? 0 : room.unreadCount + 1
+                }
               : room
           )
         );
@@ -96,15 +116,28 @@ export default function ChatPage() {
         }
       });
 
+      socket.on('messages_read', (data: { roomId: string }) => {
+        // Помечаем все сообщения в комнате как прочитанные
+        if (selectedRoom && selectedRoom.id === data.roomId) {
+          setMessages((prev) =>
+            prev.map((msg) => ({
+              ...msg,
+              isRead: msg.senderId === user?.id ? true : msg.isRead,
+            }))
+          );
+        }
+      });
+
       return () => {
         socket.off('rooms');
         socket.off('messages');
         socket.off('new_message');
         socket.off('room_updated');
         socket.off('user_typing');
+        socket.off('messages_read');
       };
     }
-  }, [socket, isConnected, selectedRoom]);
+  }, [socket, isConnected, selectedRoom, user]);
 
   const loadRooms = async () => {
     try {
@@ -118,10 +151,81 @@ export default function ChatPage() {
     }
   };
 
+  const loadFriends = async () => {
+    try {
+      const data = await api.friends.getFriends();
+      setFriends(data);
+    } catch (err) {
+      console.error('Failed to load friends:', err);
+    }
+  };
+
+  const handleSelectFriend = async (friend: Friend) => {
+    // Проверяем есть ли уже комната с этим другом
+    const existingRoom = rooms.find(r => r.companion.id === friend.id);
+    
+    if (existingRoom) {
+      // Если комната уже есть, открываем её
+      handleSelectRoom(existingRoom);
+      setSelectedFriend(friend);
+      return;
+    }
+
+    // Создаём или получаем комнату
+    try {
+      setLoadingRoom(true);
+      setSelectedFriend(friend);
+      setMessages([]);
+      setSelectedRoom(null);
+      
+      const room = await api.chat.getOrCreateRoom(friend.id);
+      
+      // Добавляем комнату в список если её там нет
+      setRooms(prev => {
+        const exists = prev.find(r => r.id === room.id);
+        if (exists) return prev;
+        
+        return [...prev, {
+          id: room.id,
+          companion: friend,
+          unreadCount: 0,
+        }];
+      });
+      
+      // Открываем комнату
+      const chatRoom: ChatRoom = {
+        id: room.id,
+        companion: friend,
+        unreadCount: 0,
+      };
+      
+      setSelectedRoom(chatRoom);
+      
+      if (socket && isConnected) {
+        socket.emit('join_room', { roomId: room.id });
+      }
+    } catch (err: any) {
+      console.error('Failed to create room:', err);
+      toast.error(err.response?.data?.message || 'Ошибка создания чата');
+      setSelectedFriend(null);
+    } finally {
+      setLoadingRoom(false);
+    }
+  };
+
   const handleSelectRoom = (room: ChatRoom) => {
+    // Останавливаем печатание в предыдущей комнате
+    if (socket && isConnected && selectedRoom) {
+      socket.emit('typing', {
+        roomId: selectedRoom.id,
+        isTyping: false,
+      });
+    }
+
     setSelectedRoom(room);
     setMessages([]);
     setIsTyping(false);
+    setNewMessage(''); // Очищаем поле ввода
 
     if (socket && isConnected) {
       socket.emit('join_room', { roomId: room.id });
@@ -137,9 +241,19 @@ export default function ChatPage() {
   const handleSendMessage = () => {
     if (!newMessage.trim() || !selectedRoom || !socket || !isConnected) return;
 
+    // Отправляем сообщение
     socket.emit('send_message', {
       roomId: selectedRoom.id,
       content: newMessage.trim(),
+    }, (response: any) => {
+      // Обработка ответа от сервера
+      if (response?.error) {
+        if (response.error.includes('Слишком частые')) {
+          toast.error(response.error, { duration: 3000 });
+        } else {
+          toast.error('Ошибка отправки сообщения');
+        }
+      }
     });
 
     setNewMessage('');
@@ -156,12 +270,46 @@ export default function ChatPage() {
     setNewMessage(value);
     
     if (socket && isConnected && selectedRoom) {
+      const isCurrentlyTyping = value.length > 0;
+      
       socket.emit('typing', {
         roomId: selectedRoom.id,
-        isTyping: value.length > 0,
+        isTyping: isCurrentlyTyping,
       });
+
+      // Автоматически отключаем "печатает" через 3 секунды
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+
+      if (isCurrentlyTyping) {
+        typingTimeoutRef.current = setTimeout(() => {
+          socket.emit('typing', {
+            roomId: selectedRoom.id,
+            isTyping: false,
+          });
+        }, 3000);
+      }
     }
   };
+
+  // Останавливаем индикатор печатания при выходе из комнаты
+  useEffect(() => {
+    return () => {
+      // Очищаем таймер
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      
+      // При размонтировании компонента или смене комнаты отправляем что перестали печатать
+      if (socket && isConnected && selectedRoom) {
+        socket.emit('typing', {
+          roomId: selectedRoom.id,
+          isTyping: false,
+        });
+      }
+    };
+  }, [socket, isConnected, selectedRoom]);
 
   const scrollToBottom = () => {
     setTimeout(() => {
@@ -179,12 +327,12 @@ export default function ChatPage() {
 
   return (
     <div className="h-[calc(100vh-64px)] flex">
-      {/* Left Sidebar - Room List */}
-      <div className={`${selectedRoom ? 'hidden md:flex' : 'flex'} w-full md:w-96 flex-col border-r border-arena-border bg-arena-card`}>
+      {/* Left Sidebar - Friends List (Contacts) */}
+      <div className={`${selectedRoom ? 'hidden lg:flex' : 'flex'} w-full lg:w-80 flex-col border-r border-arena-border bg-arena-card`}>
         <div className="p-6 border-b border-arena-border">
           <h2 className="font-orbitron font-bold text-xl text-white flex items-center gap-3">
-            <MessageCircle className="w-6 h-6 text-neon-purple" />
-            Чаты
+            <Users className="w-6 h-6 text-neon-purple" />
+            Друзья
           </h2>
           <p className="text-xs text-gray-400 mt-2">
             {isConnected ? '🟢 Подключено' : '🔴 Не подключено'}
@@ -196,151 +344,208 @@ export default function ChatPage() {
             <div className="p-8 text-center">
               <div className="w-10 h-10 border-4 border-neon-purple border-t-transparent rounded-full animate-spin mx-auto" />
             </div>
-          ) : rooms.length === 0 ? (
+          ) : friends.length === 0 ? (
             <div className="p-8 text-center">
               <Users className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-              <p className="text-gray-300 text-base font-medium">Нет активных чатов</p>
-              <p className="text-sm text-gray-500 mt-2">Добавьте друзей и начните общение</p>
+              <p className="text-gray-300 text-base font-medium">Нет друзей</p>
+              <p className="text-sm text-gray-500 mt-2">Добавьте друзей чтобы начать общение</p>
             </div>
           ) : (
-            rooms.map((room) => (
-              <button
-                key={room.id}
-                onClick={() => handleSelectRoom(room)}
-                className={`w-full p-5 flex items-center gap-4 hover:bg-arena-dark/30 transition-all border-b border-arena-border/30 ${
-                  selectedRoom?.id === room.id ? 'bg-neon-purple/15 border-l-4 border-l-neon-purple' : ''
-                }`}
-              >
-                <div className="relative flex-shrink-0">
-                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-neon-purple to-neon-blue flex items-center justify-center text-white font-bold">
-                    {room.companion.avatarUrl ? (
-                      <img src={room.companion.avatarUrl} alt={room.companion.username} className="w-full h-full rounded-full object-cover" />
-                    ) : (
-                      <span className="text-lg">{room.companion.username[0].toUpperCase()}</span>
+            friends.map((friend) => {
+              // Ищем комнату с этим другом для показа счётчика непрочитанных
+              const room = rooms.find(r => r.companion.id === friend.id);
+              const isActive = selectedFriend?.id === friend.id;
+              
+              return (
+                <button
+                  key={friend.id}
+                  onClick={() => handleSelectFriend(friend)}
+                  className={`w-full p-4 flex items-center gap-3 hover:bg-arena-dark/30 transition-all border-b border-arena-border/30 ${
+                    isActive ? 'bg-neon-purple/15 border-l-4 border-l-neon-purple' : ''
+                  }`}
+                >
+                  <div className="relative flex-shrink-0">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-neon-purple to-neon-blue flex items-center justify-center text-white font-bold">
+                      {friend.avatarUrl ? (
+                        <img src={friend.avatarUrl} alt={friend.username} className="w-full h-full rounded-full object-cover" />
+                      ) : (
+                        <span className="text-base">{friend.username[0].toUpperCase()}</span>
+                      )}
+                    </div>
+                    {room && room.unreadCount > 0 && (
+                      <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 border-2 border-arena-card flex items-center justify-center animate-pulse">
+                        <span className="text-white text-[9px] font-bold">{room.unreadCount}</span>
+                      </div>
                     )}
                   </div>
-                  {room.unreadCount > 0 && (
-                    <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-neon-purple border-2 border-arena-card flex items-center justify-center">
-                      <span className="text-white text-[10px] font-bold">{room.unreadCount}</span>
-                    </div>
-                  )}
-                </div>
-                <div className="flex-1 text-left min-w-0">
-                  <p className="font-orbitron font-bold text-base text-white truncate">
-                    {room.companion.displayName || room.companion.username}
-                  </p>
-                  {room.lastMessage && (
-                    <p className="text-sm text-gray-400 truncate mt-1">{room.lastMessage}</p>
-                  )}
-                  {room.lastMessageAt && (
-                    <p className="text-[10px] text-gray-500 mt-1">
-                      {new Date(room.lastMessageAt).toLocaleString('ru-RU', { 
-                        day: '2-digit',
-                        month: '2-digit',
-                        hour: '2-digit', 
-                        minute: '2-digit' 
-                      })}
+                  <div className="flex-1 text-left min-w-0">
+                    <p className="font-orbitron font-bold text-sm text-white truncate">
+                      {friend.displayName || friend.username}
                     </p>
-                  )}
-                </div>
-              </button>
-            ))
+                    <p className="text-xs text-gray-400 truncate">@{friend.username}</p>
+                    {room?.lastMessage && (
+                      <p className="text-xs text-gray-500 truncate mt-0.5">{room.lastMessage}</p>
+                    )}
+                  </div>
+                </button>
+              );
+            })
           )}
         </div>
       </div>
 
       {/* Right Panel - Chat Window */}
-      {selectedRoom ? (
+      {selectedRoom || loadingRoom ? (
         <div className="flex-1 flex flex-col bg-arena-dark">
-          {/* Chat Header */}
-          <div className="p-5 border-b border-arena-border flex items-center gap-4 bg-arena-card/80 backdrop-blur-sm">
-            <button
-              onClick={() => setSelectedRoom(null)}
-              className="md:hidden text-gray-400 hover:text-white transition-colors"
-            >
-              <ArrowLeft className="w-6 h-6" />
-            </button>
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-neon-purple to-neon-blue flex items-center justify-center text-white font-bold">
-              {selectedRoom.companion.avatarUrl ? (
-                <img src={selectedRoom.companion.avatarUrl} alt={selectedRoom.companion.username} className="w-full h-full rounded-full object-cover" />
-              ) : (
-                <span className="text-lg">{selectedRoom.companion.username[0].toUpperCase()}</span>
-              )}
+          {loadingRoom ? (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center">
+                <div className="w-12 h-12 border-4 border-neon-purple border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                <p className="text-gray-400">Загрузка чата...</p>
+              </div>
             </div>
-            <div className="flex-1">
-              <p className="font-orbitron font-bold text-base text-white">
-                {selectedRoom.companion.displayName || selectedRoom.companion.username}
-              </p>
-              {isTyping && (
-                <p className="text-sm text-neon-blue animate-pulse">печатает...</p>
-              )}
-            </div>
-          </div>
-
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-arena-dark to-arena-dark/50">
-            {messages.length === 0 ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <MessageCircle className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                  <p className="text-gray-400 font-medium">Начните общение</p>
-                  <p className="text-sm text-gray-500 mt-1">Отправьте первое сообщение</p>
+          ) : selectedRoom ? (
+            <>
+              {/* Chat Header */}
+              <div className="p-5 border-b border-arena-border flex items-center gap-4 bg-arena-card/80 backdrop-blur-sm">
+                <button
+                  onClick={() => {
+                    setSelectedRoom(null);
+                    setSelectedFriend(null);
+                  }}
+                  className="lg:hidden text-gray-400 hover:text-white transition-colors"
+                >
+                  <ArrowLeft className="w-6 h-6" />
+                </button>
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-neon-purple to-neon-blue flex items-center justify-center text-white font-bold">
+                  {selectedRoom.companion.avatarUrl ? (
+                    <img src={selectedRoom.companion.avatarUrl} alt={selectedRoom.companion.username} className="w-full h-full rounded-full object-cover" />
+                  ) : (
+                    <span className="text-lg">{selectedRoom.companion.username[0].toUpperCase()}</span>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <p className="font-orbitron font-bold text-base text-white">
+                    {selectedRoom.companion.displayName || selectedRoom.companion.username}
+                  </p>
+                  {isTyping && (
+                    <p className="text-sm text-neon-blue animate-pulse">печатает...</p>
+                  )}
                 </div>
               </div>
-            ) : (
-              messages.map((message) => {
-                const isOwn = message.senderId === user.id;
-                return (
-                  <div key={message.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'} animate-fadeIn`}>
-                    <div className={`max-w-[75%] md:max-w-[60%] ${
-                      isOwn 
-                        ? 'bg-neon-purple/25 border-neon-purple/50' 
-                        : 'bg-arena-card border-arena-border'
-                    } border rounded-2xl px-4 py-3 shadow-lg`}>
-                      <p className="text-base text-white break-words leading-relaxed">{message.content}</p>
-                      <p className="text-[11px] text-gray-500 mt-2 text-right">
-                        {new Date(message.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-                      </p>
+
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-arena-dark to-arena-dark/50">
+                {messages.length === 0 ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center">
+                      <MessageCircle className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                      <p className="text-gray-400 font-medium">Начните общение</p>
+                      <p className="text-sm text-gray-500 mt-1">Отправьте первое сообщение</p>
                     </div>
                   </div>
-                );
-              })
-            )}
-            <div ref={messagesEndRef} />
-          </div>
+                ) : (
+                  messages.map((message) => {
+                    const isOwn = message.senderId === user.id;
+                    return (
+                      <div key={message.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'} animate-fadeIn`}>
+                        <div className={`max-w-[75%] md:max-w-[60%] ${
+                          isOwn 
+                            ? 'bg-neon-purple/25 border-neon-purple/50' 
+                            : 'bg-arena-card border-arena-border'
+                        } border rounded-2xl px-4 py-3 shadow-lg`}>
+                          <p className="text-base text-white break-words leading-relaxed">{message.content}</p>
+                          <div className="flex items-center justify-end gap-2 mt-2">
+                            <p className="text-[11px] text-gray-500">
+                              {new Date(message.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                            {isOwn && (
+                              <div className="flex items-center gap-0.5">
+                                {message.isRead ? (
+                                  // 2 зелёные галочки = прочитано
+                                  <>
+                                    <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    <svg className="w-4 h-4 text-green-400 -ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  </>
+                                ) : message.isDelivered ? (
+                                  // 2 серые галочки = доставлено
+                                  <>
+                                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    <svg className="w-4 h-4 text-gray-400 -ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  </>
+                                ) : (
+                                  // 1 серая галочка = отправлено
+                                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+                <div ref={messagesEndRef} />
+              </div>
 
-          {/* Input */}
-          <div className="p-5 border-t border-arena-border bg-arena-card/80 backdrop-blur-sm">
-            <div className="flex gap-3">
-              <input
-                type="text"
-                value={newMessage}
-                onChange={(e) => handleTyping(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Напишите сообщение..."
-                className="flex-1 px-5 py-3.5 rounded-xl glass-input text-base focus:ring-2 focus:ring-neon-purple/50 transition-all"
-                disabled={!isConnected}
-              />
-              <Button
-                onClick={handleSendMessage}
-                disabled={!newMessage.trim() || !isConnected}
-                variant="primary"
-                className="px-6 py-3.5 rounded-xl"
-              >
-                <Send className="w-5 h-5" />
-              </Button>
-            </div>
-          </div>
+              {/* Input */}
+              <div className="p-5 border-t border-arena-border bg-arena-card/80 backdrop-blur-sm">
+                <div className="flex gap-3">
+                  <input
+                    type="text"
+                    value={newMessage}
+                    onChange={(e) => handleTyping(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Напишите сообщение..."
+                    className="flex-1 px-5 py-3.5 rounded-xl glass-input text-base focus:ring-2 focus:ring-neon-purple/50 transition-all"
+                    disabled={!isConnected}
+                  />
+                  <Button
+                    onClick={handleSendMessage}
+                    disabled={!newMessage.trim() || !isConnected}
+                    variant="primary"
+                    className="px-6 py-3.5 rounded-xl"
+                  >
+                    <Send className="w-5 h-5" />
+                  </Button>
+                </div>
+              </div>
+            </>
+          ) : null}
         </div>
       ) : (
-        <div className="hidden md:flex flex-1 items-center justify-center bg-gradient-to-br from-arena-dark via-arena-dark to-neon-purple/5">
+        <div className="hidden lg:flex flex-1 items-center justify-center bg-gradient-to-br from-arena-dark via-arena-dark to-neon-purple/5">
           <div className="text-center">
             <MessageCircle className="w-20 h-20 text-gray-600 mx-auto mb-6" />
-            <p className="text-gray-300 font-orbitron font-bold text-lg">Выберите чат</p>
-            <p className="text-sm text-gray-500 mt-2">Выберите беседу из списка слева</p>
+            <p className="text-gray-300 font-orbitron font-bold text-lg">Выберите друга</p>
+            <p className="text-sm text-gray-500 mt-2">Выберите друга из списка слева чтобы начать общение</p>
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="h-[calc(100vh-64px)] flex items-center justify-center">
+          <div className="w-10 h-10 border-4 border-neon-purple border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <ChatPageContent />
+    </Suspense>
   );
 }

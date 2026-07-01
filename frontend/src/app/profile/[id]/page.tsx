@@ -8,6 +8,7 @@ import { api } from '@/lib/api';
 import { UserProfile } from '@/types';
 import { toast } from 'react-hot-toast';
 import { useAuthStore } from '@/lib/store/auth.store';
+import { useSocket } from '@/lib/hooks/useSocket';
 import GenderIcon from '@/components/ui/GenderIcon';
 import Button from '@/components/ui/Button';
 import {
@@ -21,6 +22,7 @@ import {
   UserPlus,
   Users,
   MessageSquare,
+  Eye,
 } from 'lucide-react';
 
 const GAME_NAMES: Record<string, string> = {
@@ -38,15 +40,45 @@ export default function ProfilePage() {
   const router = useRouter();
   const userId = params.id as string;
   const { user: currentUser } = useAuthStore();
+  const { socket, isConnected } = useSocket();
   
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
-  const [friendStatus, setFriendStatus] = useState<{ status: string; requestId?: string } | null>(null);
+  const [followStatus, setFollowStatus] = useState<{ status: string } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showVisitors, setShowVisitors] = useState(false);
+  const [visitors, setVisitors] = useState<any[]>([]);
+  const [loadingVisitors, setLoadingVisitors] = useState(false);
 
   useEffect(() => {
     loadProfile();
   }, [userId]);
+
+  // Трекаем просмотр профиля (только если это не свой профиль)
+  useEffect(() => {
+    if (currentUser && userId && currentUser.id !== userId) {
+      api.users.trackProfileView(userId).catch(err => {
+        console.error('[Profile] Failed to track view:', err);
+      });
+    }
+  }, [userId, currentUser]);
+
+  // Подписываемся на WebSocket события для real-time обновлений
+  useEffect(() => {
+    if (socket && isConnected && currentUser) {
+      socket.on('follow_update', (data: { type: string; followerId: string }) => {
+        console.log('[Profile] WebSocket follow_update:', data);
+        // Если обновление касается текущего профиля, перезагружаем статус
+        if (data.followerId === userId || data.followerId === currentUser.id) {
+          loadProfile();
+        }
+      });
+
+      return () => {
+        socket.off('follow_update');
+      };
+    }
+  }, [socket, isConnected, userId, currentUser]);
 
   const loadProfile = async () => {
     try {
@@ -55,12 +87,13 @@ export default function ProfilePage() {
       setProfile(data);
 
       if (currentUser && currentUser.id !== userId) {
-        const [{ isFollowing: following }, friendStatusData] = await Promise.all([
-          api.users.isFollowing(currentUser.id, userId),
-          api.friends.getStatus(userId),
-        ]);
-        setIsFollowing(following);
-        setFriendStatus(friendStatusData);
+        // Получаем статус дружбы/подписки
+        const statusData = await api.friends.getStatus(userId);
+        setFollowStatus(statusData);
+        
+        // Определяем подписаны ли мы на пользователя
+        // following = мы подписаны на него, friends = взаимная подписка
+        setIsFollowing(statusData.status === 'following' || statusData.status === 'friends');
       }
     } catch (error: any) {
       console.error('Failed to load profile:', error);
@@ -70,66 +103,38 @@ export default function ProfilePage() {
     }
   };
 
-  const handleFollow = async () => {
+  const handleFriendAction = async () => {
     if (!currentUser) {
-      toast.error('Войдите чтобы подписаться');
+      toast.error('Войдите, чтобы подписаться');
       return;
     }
 
     try {
       if (isFollowing) {
-        await api.users.unfollow(userId);
-        setIsFollowing(false);
+        // Отписаться
+        await api.friends.unfollow(userId);
         toast.success('Вы отписались');
         setProfile(prev => prev ? { ...prev, followersCount: prev.followersCount - 1 } : prev);
       } else {
-        await api.users.follow(userId);
-        setIsFollowing(true);
-        toast.success('Вы подписались');
+        // Подписаться
+        await api.friends.follow(userId);
+        toast.success('Вы подписались!');
         setProfile(prev => prev ? { ...prev, followersCount: prev.followersCount + 1 } : prev);
       }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Ошибка');
-    }
-  };
-
-  const handleFriendAction = async () => {
-    if (!currentUser) {
-      toast.error('Войдите, чтобы добавить в друзья');
-      return;
-    }
-
-    try {
-      if (friendStatus?.status === 'friends') {
-        // Удалить из друзей
-        await api.friends.removeFriend(userId);
-        toast.success('Удалено из друзей');
-        setFriendStatus({ status: 'none' });
-      } else if (friendStatus?.status === 'request_sent' && friendStatus.requestId) {
-        // Отменить запрос
-        await api.friends.cancelRequest(friendStatus.requestId);
-        toast.success('Запрос отменен');
-        setFriendStatus({ status: 'none' });
-      } else if (friendStatus?.status === 'request_received' && friendStatus.requestId) {
-        // Принять запрос
-        await api.friends.acceptRequest(friendStatus.requestId);
-        toast.success('Запрос принят!');
-        setFriendStatus({ status: 'friends' });
-      } else {
-        // Отправить запрос
-        await api.friends.sendRequest(userId);
-        toast.success('Запрос отправлен');
-        // Перезагружаем статус
-        const newStatus = await api.friends.getStatus(userId);
-        setFriendStatus(newStatus);
-      }
+      
+      // Обновляем статус
+      const statusData = await api.friends.getStatus(userId);
+      setFollowStatus(statusData);
+      setIsFollowing(statusData.status === 'following' || statusData.status === 'friends');
     } catch (error: any) {
       console.error('Friend action error:', error);
       toast.error(error.response?.data?.message || 'Ошибка');
-      // Перезагружаем статус при ошибке
+      
+      // Перезагружаем статус при ошибке чтобы синхронизировать
       try {
-        const newStatus = await api.friends.getStatus(userId);
-        setFriendStatus(newStatus);
+        const statusData = await api.friends.getStatus(userId);
+        setFollowStatus(statusData);
+        setIsFollowing(statusData.status === 'following' || statusData.status === 'friends');
       } catch (e) {
         console.error('Failed to reload status:', e);
       }
@@ -148,6 +153,23 @@ export default function ProfilePage() {
       router.push(`/chat?room=${room.id}`);
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Ошибка открытия чата');
+    }
+  };
+
+  const handleViewVisitors = async () => {
+    if (!isOwnProfile) return;
+    
+    setShowVisitors(true);
+    setLoadingVisitors(true);
+    
+    try {
+      const data = await api.users.getProfileVisitors(userId);
+      setVisitors(data.views);
+    } catch (error: any) {
+      console.error('Failed to load visitors:', error);
+      toast.error('Не удалось загрузить посетителей');
+    } finally {
+      setLoadingVisitors(false);
     }
   };
 
@@ -230,18 +252,28 @@ export default function ProfilePage() {
 
                   <div className="flex gap-2">
                     {isOwnProfile ? (
-                      <Link href="/profile/edit">
+                      <>
                         <Button
+                          onClick={handleViewVisitors}
                           variant="secondary"
                           className="flex items-center gap-2"
                         >
-                          <Settings className="w-4 h-4" />
-                          Редактировать
+                          <Eye className="w-4 h-4" />
+                          Посетители
                         </Button>
-                      </Link>
+                        <Link href="/profile/edit">
+                          <Button
+                            variant="secondary"
+                            className="flex items-center gap-2"
+                          >
+                            <Settings className="w-4 h-4" />
+                            Редактировать
+                          </Button>
+                        </Link>
+                      </>
                     ) : currentUser && (
                     <>
-                      {friendStatus?.status === 'friends' && (
+                      {followStatus?.status === 'friends' && (
                         <Button
                           onClick={handleOpenChat}
                           variant="primary"
@@ -251,44 +283,23 @@ export default function ProfilePage() {
                           Написать
                         </Button>
                       )}
-                      {friendStatus?.status === 'friends' && (
+                      {isFollowing ? (
                         <Button
                           onClick={handleFriendAction}
                           variant="secondary"
                           className="flex items-center gap-2"
                         >
                           <UserMinus className="w-4 h-4" />
-                          Удалить из друзей
+                          Отписаться
                         </Button>
-                      )}
-                      {friendStatus?.status === 'request_sent' && (
-                        <Button
-                          onClick={handleFriendAction}
-                          variant="secondary"
-                          className="flex items-center gap-2"
-                        >
-                          <UserMinus className="w-4 h-4" />
-                          Отменить запрос
-                        </Button>
-                      )}
-                      {friendStatus?.status === 'request_received' && (
+                      ) : (
                         <Button
                           onClick={handleFriendAction}
                           variant="primary"
                           className="flex items-center gap-2"
                         >
                           <UserPlus className="w-4 h-4" />
-                          Принять запрос
-                        </Button>
-                      )}
-                      {friendStatus?.status === 'none' && (
-                        <Button
-                          onClick={handleFriendAction}
-                          variant="primary"
-                          className="flex items-center gap-2"
-                        >
-                          <UserPlus className="w-4 h-4" />
-                          Добавить в друзья
+                          {followStatus?.status === 'follower' ? 'Подписаться в ответ' : 'Подписаться'}
                         </Button>
                       )}
                     </>
@@ -305,6 +316,11 @@ export default function ProfilePage() {
                   <div className="flex items-center gap-2">
                     <span className="text-white font-semibold">{profile.followingCount}</span>
                     <span className="text-gray-400">подписок</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Eye className="w-4 h-4 text-neon-green" />
+                    <span className="text-white font-semibold">{profile.profileViewsCount || 0}</span>
+                    <span className="text-gray-400">просмотров</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Shield className="w-4 h-4 text-neon-purple" />
@@ -466,6 +482,70 @@ export default function ProfilePage() {
           )}
         </div>
       </div>
+
+      {/* Visitors Modal */}
+      {showVisitors && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setShowVisitors(false)}>
+          <div
+            className="bg-arena-card border border-arena-border rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b border-arena-border flex items-center justify-between">
+              <h2 className="font-orbitron font-bold text-xl text-white flex items-center gap-2">
+                <Eye className="w-5 h-5 text-neon-green" />
+                Кто смотрел профиль
+              </h2>
+              <button
+                onClick={() => setShowVisitors(false)}
+                className="text-gray-400 hover:text-white transition-colors text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6">
+              {loadingVisitors ? (
+                <div className="text-center text-gray-400 py-8">Загрузка...</div>
+              ) : visitors.length === 0 ? (
+                <div className="text-center text-gray-400 py-8">
+                  Пока никто не смотрел ваш профиль
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {visitors.map((visit) => (
+                    <Link
+                      key={visit.id}
+                      href={`/profile/${visit.viewer.id}`}
+                      onClick={() => setShowVisitors(false)}
+                      className="flex items-center gap-4 p-4 rounded-lg border border-arena-border hover:border-neon-purple/50 bg-white/5 hover:bg-white/10 transition-all"
+                    >
+                      <img
+                        src={visit.viewer.avatarUrl || '/default-avatar.svg'}
+                        alt={visit.viewer.username}
+                        className="w-12 h-12 rounded-lg object-cover"
+                      />
+                      <div className="flex-1">
+                        <div className="font-semibold text-white">
+                          {visit.viewer.displayName || visit.viewer.username}
+                        </div>
+                        <div className="text-sm text-gray-400">@{visit.viewer.username}</div>
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {new Date(visit.viewedAt).toLocaleString('ru-RU', {
+                          day: 'numeric',
+                          month: 'short',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

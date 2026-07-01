@@ -105,14 +105,33 @@ export class User {
   @Column({ type: 'int', default: 0 })
   followingCount: number;
 
+  @Column({ type: 'int', default: 0 })
+  profileViewsCount: number;
+
   @Column({ type: 'enum', enum: GameType, nullable: true })
   mainGame: GameType;
+
+  // Organizer stats
+  @Column({ type: 'int', default: 100 })
+  organizerRating: number;
+
+  @Column({ type: 'int', default: 0 })
+  organizerReportsCount: number;
+
+  @Column({ type: 'timestamp', nullable: true })
+  organizerBanUntil: Date;
 
   @Column({ type: 'timestamp', nullable: true })
   lastUsernameChange: Date;
 
   @Column({ type: 'timestamp', nullable: true })
   lastAvatarChange: Date;
+
+  @Column({ type: 'timestamp', nullable: true })
+  lastBannerChange: Date;
+
+  @Column({ type: 'timestamp', nullable: true })
+  lastGenderChange: Date;
 
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 1000 })
   credits: number;

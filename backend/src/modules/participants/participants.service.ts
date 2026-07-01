@@ -70,7 +70,12 @@ export class ParticipantsService {
       });
       const saved = await this.participantsRepo.save(participant);
       await queryRunner.commitTransaction();
-      return saved;
+      
+      // Загружаем participant с user relation
+      return this.participantsRepo.findOne({
+        where: { id: saved.id },
+        relations: ['user'],
+      });
     } catch (err) {
       await queryRunner.rollbackTransaction();
       throw err;

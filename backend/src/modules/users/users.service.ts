@@ -13,6 +13,7 @@ import { TeamMember } from '../../entities/team-member.entity';
 import { Team } from '../../entities/team.entity';
 import { Transaction } from '../../entities/transaction.entity';
 import { User } from '../../entities/user.entity';
+import { ProfileView } from '../../entities/profile-view.entity';
 import { OnboardingDto } from './dto/onboarding.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -34,6 +35,8 @@ export class UsersService {
     private teamsRepo: Repository<Team>,
     @InjectRepository(TeamMember)
     private teamMembersRepo: Repository<TeamMember>,
+    @InjectRepository(ProfileView)
+    private profileViewRepo: Repository<ProfileView>,
   ) {}
 
   private normalizeProfileValue(value?: string | null): string | null {
@@ -276,69 +279,61 @@ export class UsersService {
       }));
     }
 
-    // Если пользователь авторизован, добавляем статус дружбы
-    // Используем прямой импорт сервиса друзей через инжекцию в конструкторе
-    // Вместо этого используем прямые запросы к БД
-    const friendRequestRepo = this.onboardingRepo.manager.getRepository('FriendRequest');
-    const friendshipRepo = this.onboardingRepo.manager.getRepository('Friendship');
+    // Если пользователь авторизован, получаем статусы подписок батчем
+    const userIds = filteredUsers.map(u => u.id);
+    const friendshipStatuses = await this.getBatchFollowStatuses(currentUserId, userIds);
 
-    const results = await Promise.all(
-      filteredUsers.map(async (user) => {
-        // Проверяем дружбу
-        const [user1Id, user2Id] = [currentUserId, user.id].sort();
-        const friendship = await friendshipRepo.findOne({
-          where: { user1Id, user2Id },
-        });
+    return filteredUsers.map((user) => ({
+      id: user.id,
+      username: user.username,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+      followersCount: user.followersCount,
+      mainGame: user.mainGame,
+      followStatus: friendshipStatuses.get(user.id) || 'none',
+    }));
+  }
 
-        if (friendship) {
-          return {
-            id: user.id,
-            username: user.username,
-            displayName: user.displayName,
-            avatarUrl: user.avatarUrl,
-            followersCount: user.followersCount,
-            mainGame: user.mainGame,
-            friendshipStatus: 'friends',
-          };
-        }
+  // Получить статусы подписок для нескольких пользователей батчем
+  private async getBatchFollowStatuses(
+    currentUserId: string,
+    targetUserIds: string[],
+  ): Promise<Map<string, 'friends' | 'following' | 'follower' | 'none'>> {
+    const statusMap = new Map<string, 'friends' | 'following' | 'follower' | 'none'>();
 
-        // Проверяем pending запросы
-        const pendingRequest = await friendRequestRepo.findOne({
-          where: [
-            { senderId: currentUserId, receiverId: user.id, status: 'pending' },
-            { senderId: user.id, receiverId: currentUserId, status: 'pending' },
-          ],
-        });
+    if (targetUserIds.length === 0) {
+      return statusMap;
+    }
 
-        if (pendingRequest) {
-          const status = (pendingRequest as any).senderId === currentUserId 
-            ? 'pending_sent' 
-            : 'pending_received';
-          
-          return {
-            id: user.id,
-            username: user.username,
-            displayName: user.displayName,
-            avatarUrl: user.avatarUrl,
-            followersCount: user.followersCount,
-            mainGame: user.mainGame,
-            friendshipStatus: status,
-          };
-        }
+    // Проверяем мои подписки
+    const myFollows = await this.followsRepo.find({
+      where: { followerId: currentUserId, followingId: In(targetUserIds) },
+    });
+    const iFollowIds = new Set(myFollows.map(f => f.followingId));
 
-        return {
-          id: user.id,
-          username: user.username,
-          displayName: user.displayName,
-          avatarUrl: user.avatarUrl,
-          followersCount: user.followersCount,
-          mainGame: user.mainGame,
-          friendshipStatus: null,
-        };
-      }),
-    );
+    // Проверяем кто подписан на меня
+    const theirFollows = await this.followsRepo.find({
+      where: { followerId: In(targetUserIds), followingId: currentUserId },
+    });
+    const theyFollowIds = new Set(theirFollows.map(f => f.followerId));
 
-    return results;
+    // Определяем статусы
+    for (const targetId of targetUserIds) {
+      const iFollow = iFollowIds.has(targetId);
+      const theyFollow = theyFollowIds.has(targetId);
+
+      if (iFollow && theyFollow) {
+        statusMap.set(targetId, 'friends'); // Взаимная подписка
+      } else if (iFollow) {
+        statusMap.set(targetId, 'following'); // Я подписан
+      } else if (theyFollow) {
+        statusMap.set(targetId, 'follower'); // Он подписан на меня
+      } else {
+        statusMap.set(targetId, 'none');
+      }
+    }
+
+    return statusMap;
   }
 
   // ========== PROFILE METHODS ==========
@@ -383,14 +378,40 @@ export class UsersService {
       updateData.lastAvatarChange = now;
     }
 
+    // Check banner change limit (once every 7 days after first change)
+    if (dto.bannerUrl !== undefined && dto.bannerUrl !== user.bannerUrl) {
+      if (user.lastBannerChange) {
+        const daysSinceLastChange = (now.getTime() - new Date(user.lastBannerChange).getTime()) / (1000 * 60 * 60 * 24);
+        if (daysSinceLastChange < 7) {
+          const daysLeft = Math.ceil(7 - daysSinceLastChange);
+          throw new BadRequestException(`Вы сможете изменить баннер через ${daysLeft} ${daysLeft === 1 ? 'день' : daysLeft < 5 ? 'дня' : 'дней'}`);
+        }
+      }
+
+      updateData.bannerUrl = this.normalizeProfileValue(dto.bannerUrl);
+      updateData.lastBannerChange = now;
+    }
+
+    // Check gender change limit (once every 7 days after first change)
+    if (dto.gender !== undefined && dto.gender !== user.gender) {
+      if (user.lastGenderChange) {
+        const daysSinceLastChange = (now.getTime() - new Date(user.lastGenderChange).getTime()) / (1000 * 60 * 60 * 24);
+        if (daysSinceLastChange < 7) {
+          const daysLeft = Math.ceil(7 - daysSinceLastChange);
+          throw new BadRequestException(`Вы сможете изменить пол через ${daysLeft} ${daysLeft === 1 ? 'день' : daysLeft < 5 ? 'дня' : 'дней'}`);
+        }
+      }
+
+      updateData.gender = dto.gender;
+      updateData.lastGenderChange = now;
+    }
+
     // Other fields can be updated freely
     if (dto.bio !== undefined) updateData.bio = this.normalizeProfileValue(dto.bio);
     if (dto.displayName !== undefined) updateData.displayName = this.normalizeProfileValue(dto.displayName);
     if (dto.tagline !== undefined) updateData.tagline = this.normalizeProfileValue(dto.tagline);
-    if (dto.bannerUrl !== undefined) updateData.bannerUrl = this.normalizeProfileValue(dto.bannerUrl);
     if (dto.country !== undefined) updateData.country = this.normalizeProfileValue(dto.country);
     if (dto.city !== undefined) updateData.city = this.normalizeProfileValue(dto.city);
-    if (dto.gender !== undefined) updateData.gender = dto.gender;
     if (dto.mainGame !== undefined) updateData.mainGame = dto.mainGame;
 
     await this.usersRepo.update(userId, updateData);
@@ -442,10 +463,15 @@ export class UsersService {
       currentTeam: teamMemberships.get(`${userId}:${stat.game}`) ?? null,
     }));
 
-    // Calculate days until username/avatar can be changed
+    // Calculate days and hours until username/avatar/banner/gender can be changed
     const now = new Date();
     let usernameChangeDays = 0;
     let avatarChangeDays = 0;
+    let avatarChangeHours = 0;
+    let bannerChangeDays = 0;
+    let bannerChangeHours = 0;
+    let genderChangeDays = 0;
+    let genderChangeHours = 0;
 
     if (user.lastUsernameChange) {
       const daysSince = (now.getTime() - new Date(user.lastUsernameChange).getTime()) / (1000 * 60 * 60 * 24);
@@ -453,8 +479,27 @@ export class UsersService {
     }
 
     if (user.lastAvatarChange) {
-      const daysSince = (now.getTime() - new Date(user.lastAvatarChange).getTime()) / (1000 * 60 * 60 * 24);
-      avatarChangeDays = Math.max(0, Math.ceil(7 - daysSince));
+      const msSince = now.getTime() - new Date(user.lastAvatarChange).getTime();
+      const daysSince = msSince / (1000 * 60 * 60 * 24);
+      const hoursSince = msSince / (1000 * 60 * 60);
+      avatarChangeDays = Math.max(0, Math.floor(7 - daysSince));
+      avatarChangeHours = Math.max(0, Math.ceil((7 * 24) - hoursSince) % 24);
+    }
+
+    if (user.lastBannerChange) {
+      const msSince = now.getTime() - new Date(user.lastBannerChange).getTime();
+      const daysSince = msSince / (1000 * 60 * 60 * 24);
+      const hoursSince = msSince / (1000 * 60 * 60);
+      bannerChangeDays = Math.max(0, Math.floor(7 - daysSince));
+      bannerChangeHours = Math.max(0, Math.ceil((7 * 24) - hoursSince) % 24);
+    }
+
+    if (user.lastGenderChange) {
+      const msSince = now.getTime() - new Date(user.lastGenderChange).getTime();
+      const daysSince = msSince / (1000 * 60 * 60 * 24);
+      const hoursSince = msSince / (1000 * 60 * 60);
+      genderChangeDays = Math.max(0, Math.floor(7 - daysSince));
+      genderChangeHours = Math.max(0, Math.ceil((7 * 24) - hoursSince) % 24);
     }
 
     return {
@@ -467,9 +512,16 @@ export class UsersService {
       mainTeam: user.mainGame ? teamMemberships.get(`${userId}:${user.mainGame}`) ?? null : null,
       favoriteGames: onboarding?.games || [],
       canChangeUsername: usernameChangeDays === 0,
-      canChangeAvatar: avatarChangeDays === 0,
+      canChangeAvatar: avatarChangeDays === 0 && avatarChangeHours === 0,
+      canChangeBanner: bannerChangeDays === 0 && bannerChangeHours === 0,
+      canChangeGender: genderChangeDays === 0 && genderChangeHours === 0,
       usernameChangeDays,
       avatarChangeDays,
+      avatarChangeHours,
+      bannerChangeDays,
+      bannerChangeHours,
+      genderChangeDays,
+      genderChangeHours,
     };
   }
 
@@ -674,5 +726,59 @@ export class UsersService {
     const follow1 = await this.isFollowing(userId1, userId2);
     const follow2 = await this.isFollowing(userId2, userId1);
     return follow1 && follow2; // Friends = mutual follow
+  }
+
+  // ========== PROFILE VIEWS METHODS ==========
+  async trackProfileView(viewerId: string, profileId: string) {
+    // Не трекаем просмотр своего профиля
+    if (viewerId === profileId) {
+      return;
+    }
+
+    // Создаем запись о просмотре
+    const view = this.profileViewRepo.create({ viewerId, profileId });
+    await this.profileViewRepo.save(view);
+
+    // Увеличиваем счётчик просмотров профиля
+    await this.usersRepo.increment({ id: profileId }, 'profileViewsCount', 1);
+  }
+
+  async getProfileVisitors(profileId: string, currentUserId: string) {
+    // Только владелец профиля может видеть посетителей
+    if (profileId !== currentUserId) {
+      throw new BadRequestException('Вы можете видеть только посетителей своего профиля');
+    }
+
+    // Получаем посетителей за последний месяц
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+
+    const views = await this.profileViewRepo.find({
+      where: { 
+        profileId,
+      },
+      relations: ['viewer'],
+      order: { viewedAt: 'DESC' },
+    });
+
+    // Фильтруем по дате и исключаем записи без viewer
+    const recentViews = views
+      .filter(v => v.viewer !== null && new Date(v.viewedAt) >= oneMonthAgo)
+      .map(v => ({
+        id: v.id,
+        viewer: {
+          id: v.viewer.id,
+          username: v.viewer.username,
+          displayName: v.viewer.displayName,
+          avatarUrl: v.viewer.avatarUrl,
+          mainGame: v.viewer.mainGame,
+        },
+        viewedAt: v.viewedAt,
+      }));
+
+    return {
+      total: recentViews.length,
+      views: recentViews,
+    };
   }
 }

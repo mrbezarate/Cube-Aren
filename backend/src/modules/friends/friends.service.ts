@@ -1,277 +1,223 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { FriendRequest, FriendRequestStatus } from '../../entities/friend-request.entity';
-import { Friendship } from '../../entities/friendship.entity';
+import { Follow } from '../../entities/follow.entity';
 import { User } from '../../entities/user.entity';
 
 @Injectable()
 export class FriendsService {
   constructor(
-    @InjectRepository(FriendRequest)
-    private friendRequestRepo: Repository<FriendRequest>,
-    @InjectRepository(Friendship)
-    private friendshipRepo: Repository<Friendship>,
+    @InjectRepository(Follow)
+    private followRepo: Repository<Follow>,
     @InjectRepository(User)
     private userRepo: Repository<User>,
   ) {}
 
-  // Отправить запрос в друзья
-  async sendFriendRequest(senderId: string, receiverId: string) {
-    if (senderId === receiverId) {
-      throw new BadRequestException('Нельзя добавить себя в друзья');
+  // Подписаться на пользователя (как в TikTok)
+  async followUser(followerId: string, followingId: string) {
+    if (followerId === followingId) {
+      throw new BadRequestException('Нельзя подписаться на себя');
     }
 
-    // Проверка что получатель существует
-    const receiver = await this.userRepo.findOne({ where: { id: receiverId } });
-    if (!receiver) {
+    // Проверка что пользователь существует
+    const following = await this.userRepo.findOne({ where: { id: followingId } });
+    if (!following) {
       throw new NotFoundException('Пользователь не найден');
     }
 
-    // Проверка что уже не друзья
-    const areFriends = await this.areFriends(senderId, receiverId);
-    if (areFriends) {
-      throw new BadRequestException('Вы уже друзья');
-    }
-
-    // Проверка существующих запросов
-    const existingRequest = await this.friendRequestRepo.findOne({
-      where: [
-        { senderId, receiverId, status: FriendRequestStatus.PENDING },
-        { senderId: receiverId, receiverId: senderId, status: FriendRequestStatus.PENDING },
-      ],
+    // Проверяем не подписаны ли уже
+    const existing = await this.followRepo.findOne({
+      where: { followerId, followingId },
     });
 
-    if (existingRequest) {
-      if (existingRequest.senderId === receiverId) {
-        // Если получатель уже отправил запрос, сразу принимаем и создаем дружбу
-        await this.acceptFriendRequest(existingRequest.id, senderId);
-        return { message: 'Запрос принят, вы теперь друзья!' };
-      }
-      throw new BadRequestException('Запрос уже отправлен');
+    if (existing) {
+      throw new BadRequestException('Вы уже подписаны на этого пользователя');
     }
 
-    const request = this.friendRequestRepo.create({
-      senderId,
-      receiverId,
-      status: FriendRequestStatus.PENDING,
-    });
+    // Создаём подписку
+    const follow = this.followRepo.create({ followerId, followingId });
+    await this.followRepo.save(follow);
 
-    await this.friendRequestRepo.save(request);
-    return { message: 'Запрос в друзья отправлен' };
+    // Обновляем счётчики
+    await this.userRepo.increment({ id: followerId }, 'followingCount', 1);
+    await this.userRepo.increment({ id: followingId }, 'followersCount', 1);
+
+    console.log(`[FriendsService] User ${followerId} followed ${followingId}`);
+
+    return { 
+      message: 'Вы подписались',
+      followerId,
+      followingId,
+    };
   }
 
-  // Принять запрос в друзья
-  async acceptFriendRequest(requestId: string, userId: string) {
-    const request = await this.friendRequestRepo.findOne({
-      where: { id: requestId },
-      relations: ['sender', 'receiver'],
+  // Отписаться от пользователя
+  async unfollowUser(followerId: string, followingId: string) {
+    const follow = await this.followRepo.findOne({
+      where: { followerId, followingId },
     });
 
-    if (!request) {
-      throw new NotFoundException('Запрос не найден');
+    if (!follow) {
+      throw new NotFoundException('Вы не подписаны на этого пользователя');
     }
 
-    if (request.receiverId !== userId) {
-      throw new BadRequestException('Вы не можете принять этот запрос');
-    }
+    await this.followRepo.remove(follow);
 
-    if (request.status !== FriendRequestStatus.PENDING) {
-      throw new BadRequestException('Запрос уже обработан');
-    }
+    // Обновляем счётчики
+    await this.userRepo.decrement({ id: followerId }, 'followingCount', 1);
+    await this.userRepo.decrement({ id: followingId }, 'followersCount', 1);
 
-    // Обновляем статус запроса
-    request.status = FriendRequestStatus.ACCEPTED;
-    request.respondedAt = new Date();
-    await this.friendRequestRepo.save(request);
+    console.log(`[FriendsService] User ${followerId} unfollowed ${followingId}`);
 
-    // Создаем дружбу (всегда user1Id < user2Id для консистентности)
-    const [user1Id, user2Id] = [request.senderId, request.receiverId].sort();
-    const friendship = this.friendshipRepo.create({
-      user1Id,
-      user2Id,
-    });
-    await this.friendshipRepo.save(friendship);
-
-    return { message: 'Запрос принят, вы теперь друзья!' };
+    return { 
+      message: 'Вы отписались',
+      followerId,
+      followingId,
+    };
   }
 
-  // Отклонить запрос в друзья
-  async rejectFriendRequest(requestId: string, userId: string) {
-    const request = await this.friendRequestRepo.findOne({
-      where: { id: requestId },
-    });
-
-    if (!request) {
-      throw new NotFoundException('Запрос не найден');
-    }
-
-    if (request.receiverId !== userId) {
-      throw new BadRequestException('Вы не можете отклонить этот запрос');
-    }
-
-    if (request.status !== FriendRequestStatus.PENDING) {
-      throw new BadRequestException('Запрос уже обработан');
-    }
-
-    request.status = FriendRequestStatus.REJECTED;
-    request.respondedAt = new Date();
-    await this.friendRequestRepo.save(request);
-
-    return { message: 'Запрос отклонен' };
-  }
-
-  // Отменить отправленный запрос
-  async cancelFriendRequest(requestId: string, userId: string) {
-    const request = await this.friendRequestRepo.findOne({
-      where: { id: requestId },
-    });
-
-    if (!request) {
-      throw new NotFoundException('Запрос не найден');
-    }
-
-    if (request.senderId !== userId) {
-      throw new BadRequestException('Вы не можете отменить этот запрос');
-    }
-
-    if (request.status !== FriendRequestStatus.PENDING) {
-      throw new BadRequestException('Запрос уже обработан');
-    }
-
-    await this.friendRequestRepo.remove(request);
-    return { message: 'Запрос отменен' };
-  }
-
-  // Удалить из друзей
+  // Удалить из друзей (отписаться от него)
   async removeFriend(userId: string, friendId: string) {
-    const [user1Id, user2Id] = [userId, friendId].sort();
-    
-    const friendship = await this.friendshipRepo.findOne({
-      where: { user1Id, user2Id },
-    });
-
-    if (!friendship) {
-      throw new NotFoundException('Дружба не найдена');
-    }
-
-    await this.friendshipRepo.remove(friendship);
-    return { message: 'Удалено из друзей' };
+    return this.unfollowUser(userId, friendId);
   }
 
-  // Получить входящие запросы
+  // Получить входящие запросы = кто подписался на меня, но я не подписан на них
   async getIncomingRequests(userId: string) {
-    const requests = await this.friendRequestRepo.find({
-      where: { receiverId: userId, status: FriendRequestStatus.PENDING },
-      relations: ['sender'],
-      order: { createdAt: 'DESC' },
-    });
-
-    // Фильтруем запросы, у которых отправитель был удален
-    return requests
-      .filter(req => req.sender !== null)
-      .map(req => ({
-        id: req.id,
-        sender: {
-          id: req.sender.id,
-          username: req.sender.username,
-          displayName: req.sender.displayName,
-          avatarUrl: req.sender.avatarUrl,
-          mainGame: req.sender.mainGame,
-        },
-        createdAt: req.createdAt,
-      }));
-  }
-
-  // Получить исходящие запросы
-  async getOutgoingRequests(userId: string) {
-    const requests = await this.friendRequestRepo.find({
-      where: { senderId: userId, status: FriendRequestStatus.PENDING },
-      relations: ['receiver'],
-      order: { createdAt: 'DESC' },
-    });
-
-    // Фильтруем запросы, у которых получатель был удален
-    return requests
-      .filter(req => req.receiver !== null)
-      .map(req => ({
-        id: req.id,
-        receiver: {
-          id: req.receiver.id,
-          username: req.receiver.username,
-          displayName: req.receiver.displayName,
-          avatarUrl: req.receiver.avatarUrl,
-          mainGame: req.receiver.mainGame,
-        },
-        createdAt: req.createdAt,
-      }));
-  }
-
-  // Получить список друзей
-  async getFriends(userId: string) {
-    const friendships = await this.friendshipRepo
-      .createQueryBuilder('f')
-      .leftJoinAndSelect('f.user1', 'user1')
-      .leftJoinAndSelect('f.user2', 'user2')
-      .where('f.user1Id = :userId OR f.user2Id = :userId', { userId })
-      .orderBy('f.createdAt', 'DESC')
-      .getMany();
-
-    // Фильтруем дружбы, где один из пользователей был удален
-    return friendships
-      .filter(friendship => friendship.user1 !== null && friendship.user2 !== null)
-      .map(friendship => {
-        const friend = friendship.user1Id === userId ? friendship.user2 : friendship.user1;
-        return {
-          id: friend.id,
-          username: friend.username,
-          displayName: friend.displayName,
-          avatarUrl: friend.avatarUrl,
-          mainGame: friend.mainGame,
-          gender: friend.gender,
-          followersCount: friend.followersCount,
-          friendsSince: friendship.createdAt,
-        };
-      });
-  }
-
-  // Проверка дружбы
-  async areFriends(userId: string, friendId: string): Promise<boolean> {
-    const [user1Id, user2Id] = [userId, friendId].sort();
+    console.log('[FriendsService] Getting incoming requests for userId:', userId);
     
-    const friendship = await this.friendshipRepo.findOne({
-      where: { user1Id, user2Id },
+    // Находим всех кто подписан на меня
+    const followers = await this.followRepo.find({
+      where: { followingId: userId },
+      relations: ['follower'],
+      order: { createdAt: 'DESC' },
     });
+    console.log('[FriendsService] Followers raw:', followers.length);
+    console.log('[FriendsService] Followers data:', followers.map(f => ({ 
+      id: f.id, 
+      followerId: f.followerId, 
+      hasFollowerRelation: !!f.follower,
+      followerUsername: f.follower?.username 
+    })));
 
-    return !!friendship;
+    // Находим на кого я подписан
+    const following = await this.followRepo.find({
+      where: { followerId: userId },
+    });
+    console.log('[FriendsService] Following count:', following.length);
+    const followingIds = new Set(following.map(f => f.followingId));
+    console.log('[FriendsService] Following IDs:', Array.from(followingIds));
+
+    // Фильтруем: оставляем только тех, кто подписан на меня, но я не подписан на них
+    const filtered = followers.filter(f => f.follower !== null && !followingIds.has(f.followerId));
+    console.log('[FriendsService] Filtered incoming:', filtered.length);
+    
+    const result = filtered.map(f => ({
+      id: f.follower.id, // ID самого пользователя (для frontend совместимости)
+      sender: {          // Оборачиваем в sender для совместимости с frontend
+        id: f.follower.id,
+        username: f.follower.username,
+        displayName: f.follower.displayName,
+        avatarUrl: f.follower.avatarUrl,
+        mainGame: f.follower.mainGame,
+      },
+      createdAt: f.createdAt,
+    }));
+    
+    console.log('[FriendsService] Returning incoming:', result);
+    return result;
   }
 
-  // Получить статус дружбы
+  // Получить список друзей = взаимные подписки
+  async getFriends(userId: string) {
+    console.log('[FriendsService] Getting friends for userId:', userId);
+    
+    // Находим всех кто подписан на меня
+    const followers = await this.followRepo.find({
+      where: { followingId: userId },
+      relations: ['follower'],
+    });
+    console.log('[FriendsService] Followers:', followers.length);
+    console.log('[FriendsService] Followers data:', followers.map(f => ({ 
+      id: f.id, 
+      followerId: f.followerId, 
+      hasFollowerRelation: !!f.follower 
+    })));
+
+    // Находим на кого я подписан
+    const following = await this.followRepo.find({
+      where: { followerId: userId },
+      relations: ['following'],
+    });
+    console.log('[FriendsService] Following:', following.length);
+    console.log('[FriendsService] Following data:', following.map(f => ({ 
+      id: f.id, 
+      followingId: f.followingId, 
+      hasFollowingRelation: !!f.following 
+    })));
+
+    const followingIds = new Set(following.map(f => f.followingId));
+    const followerIds = new Set(followers.map(f => f.followerId));
+    
+    console.log('[FriendsService] Following IDs:', Array.from(followingIds));
+    console.log('[FriendsService] Follower IDs:', Array.from(followerIds));
+
+    // Друзья = те кто есть в обоих списках (взаимная подписка)
+    const filtered = followers.filter(f => f.follower !== null && followingIds.has(f.followerId));
+    console.log('[FriendsService] Filtered friends:', filtered.length);
+    
+    const friendUsers = filtered.map(f => ({
+      id: f.follower.id,
+      username: f.follower.username,
+      displayName: f.follower.displayName,
+      avatarUrl: f.follower.avatarUrl,
+      mainGame: f.follower.mainGame,
+      gender: f.follower.gender,
+      followersCount: f.follower.followersCount,
+      friendsSince: f.createdAt,
+    }));
+
+    console.log('[FriendsService] Returning friends:', friendUsers);
+    return friendUsers;
+  }
+
+  // Проверка дружбы = взаимная подписка
+  async areFriends(userId: string, friendId: string): Promise<boolean> {
+    const follow1 = await this.followRepo.findOne({
+      where: { followerId: userId, followingId: friendId },
+    });
+    const follow2 = await this.followRepo.findOne({
+      where: { followerId: friendId, followingId: userId },
+    });
+
+    return !!follow1 && !!follow2;
+  }
+
+  // Получить статус подписки/дружбы
   async getFriendshipStatus(userId: string, targetId: string) {
     if (userId === targetId) {
       return { status: 'self' };
     }
 
-    const areFriends = await this.areFriends(userId, targetId);
-    if (areFriends) {
-      return { status: 'friends' };
-    }
-
-    const pendingRequest = await this.friendRequestRepo.findOne({
-      where: [
-        { senderId: userId, receiverId: targetId, status: FriendRequestStatus.PENDING },
-        { senderId: targetId, receiverId: userId, status: FriendRequestStatus.PENDING },
-      ],
+    // Проверяем взаимные подписки
+    const iFollow = await this.followRepo.findOne({
+      where: { followerId: userId, followingId: targetId },
+    });
+    const theyFollow = await this.followRepo.findOne({
+      where: { followerId: targetId, followingId: userId },
     });
 
-    if (pendingRequest) {
-      if (pendingRequest.senderId === userId) {
-        return { status: 'request_sent', requestId: pendingRequest.id };
-      } else {
-        return { status: 'request_received', requestId: pendingRequest.id };
-      }
+    if (iFollow && theyFollow) {
+      return { status: 'friends' }; // Взаимная подписка = друзья
     }
 
-    return { status: 'none' };
+    if (iFollow) {
+      return { status: 'following' }; // Я подписан, но он не подписан на меня
+    }
+
+    if (theyFollow) {
+      return { status: 'follower' }; // Он подписан на меня, но я не подписан на него
+    }
+
+    return { status: 'none' }; // Нет подписок
   }
 }

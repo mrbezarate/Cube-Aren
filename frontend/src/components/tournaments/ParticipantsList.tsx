@@ -86,8 +86,8 @@ export default function ParticipantsList({
                 {/* Left Side: Avatar, Username, Team */}
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-full border border-arena-border bg-arena-dark flex items-center justify-center relative">
-                    {p.user.avatarUrl ? (
-                      <img src={p.user.avatarUrl} alt={p.user.username} className="w-full h-full object-cover rounded-full" />
+                    {p.user?.avatarUrl ? (
+                      <img src={p.user.avatarUrl} alt={p.user?.username || 'User'} className="w-full h-full object-cover rounded-full" />
                     ) : (
                       <User className="w-4.5 h-4.5 text-gray-400" />
                     )}
@@ -97,7 +97,7 @@ export default function ParticipantsList({
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-white">{p.user.username}</span>
+                      <span className="text-sm font-bold text-white">{p.user?.username || 'Пользователь'}</span>
                       {p.placement && (
                         <span className="flex items-center gap-0.5 text-xs text-neon-gold">
                           <Medal className="w-3.5 h-3.5" /> #{p.placement}

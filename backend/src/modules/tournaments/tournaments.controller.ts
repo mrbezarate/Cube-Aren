@@ -64,10 +64,9 @@ export class TournamentsController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('organizer', 'admin')
+  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Create tournament (organizer only)' })
+  @ApiOperation({ summary: 'Create tournament (all users can create with limits)' })
   create(@CurrentUser('id') userId: string, @Body() dto: CreateTournamentDto) {
     return this.tournamentsService.create(userId, dto);
   }
@@ -81,6 +80,18 @@ export class TournamentsController {
     @CurrentUser('id') userId: string,
   ) {
     return this.tournamentsService.saveTournament(userId, id);
+  }
+
+  @Post(':id/view')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Track tournament view' })
+  async trackView(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    await this.tournamentsService.trackTournamentView(userId, id);
+    return { message: 'Просмотр зафиксирован' };
   }
 
   @Delete(':id/save')
@@ -136,5 +147,24 @@ export class TournamentsController {
     @Body('order') order: number,
   ) {
     return this.tournamentsService.setFeatured(id, order);
+  }
+
+  @Post(':id/report')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Report organizer for tournament issues' })
+  reportOrganizer(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+    @Body('reason') reason: string,
+    @Body('description') description?: string,
+  ) {
+    return this.tournamentsService.reportOrganizer(userId, id, reason, description);
+  }
+
+  @Get('organizer/:id/stats')
+  @ApiOperation({ summary: 'Get organizer statistics' })
+  getOrganizerStats(@Param('id', ParseUUIDPipe) id: string) {
+    return this.tournamentsService.getOrganizerStats(id);
   }
 }

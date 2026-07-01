@@ -12,6 +12,7 @@ import {
   Inject,
   forwardRef,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { AuthService } from '../auth/auth.service';
@@ -81,6 +82,7 @@ export class UsersController {
 
   @Get('search')
   @UseGuards(OptionalJwtAuthGuard)
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 поисков в минуту
   @ApiOperation({ summary: 'Search users by username or display name' })
   @ApiQuery({ name: 'query', required: true, type: String })
   searchUsers(@Query('query') query: string, @CurrentUser('id') userId?: string) {
@@ -137,6 +139,7 @@ export class UsersController {
   @Post(':id/follow')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 подписок в минуту
   @ApiOperation({ summary: 'Follow a user' })
   followUser(@CurrentUser('id') userId: string, @Param('id') targetId: string) {
     return this.usersService.followUser(userId, targetId);
@@ -145,6 +148,7 @@ export class UsersController {
   @Delete(':id/follow')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 отписок в минуту
   @ApiOperation({ summary: 'Unfollow a user' })
   unfollowUser(@CurrentUser('id') userId: string, @Param('id') targetId: string) {
     return this.usersService.unfollowUser(userId, targetId);
@@ -186,5 +190,23 @@ export class UsersController {
   async areFriends(@Param('id') userId: string, @Param('targetId') targetId: string) {
     const areFriends = await this.usersService.areFriends(userId, targetId);
     return { areFriends };
+  }
+
+  // ========== PROFILE VIEWS ENDPOINTS ==========
+  @Post(':id/view')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Track profile view' })
+  async trackProfileView(@CurrentUser('id') viewerId: string, @Param('id') profileId: string) {
+    await this.usersService.trackProfileView(viewerId, profileId);
+    return { message: 'Просмотр зафиксирован' };
+  }
+
+  @Get(':id/visitors')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get profile visitors (last month, owner only)' })
+  getProfileVisitors(@CurrentUser('id') currentUserId: string, @Param('id') profileId: string) {
+    return this.usersService.getProfileVisitors(profileId, currentUserId);
   }
 }

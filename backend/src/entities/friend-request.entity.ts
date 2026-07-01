@@ -5,6 +5,7 @@ import {
   CreateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { User } from './user.entity';
 
@@ -15,18 +16,21 @@ export enum FriendRequestStatus {
 }
 
 @Entity('friend_requests')
+@Index(['senderId', 'receiverId', 'status'])
+@Index(['receiverId', 'status'])
+@Index(['senderId', 'status'])
 export class FriendRequest {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => User, { eager: true })
+  @ManyToOne(() => User, { eager: true, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'sender_id' })
   sender: User;
 
   @Column()
   senderId: string;
 
-  @ManyToOne(() => User, { eager: true })
+  @ManyToOne(() => User, { eager: true, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'receiver_id' })
   receiver: User;
 
