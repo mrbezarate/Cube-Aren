@@ -20,14 +20,14 @@ export class SavedTournament {
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @Column()
+  @Column({ name: 'user_id' })
   userId: string;
 
   @ManyToOne(() => Tournament, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'tournament_id' })
   tournament: Tournament;
 
-  @Column()
+  @Column({ name: 'tournament_id' })
   tournamentId: string;
 
   @CreateDateColumn()

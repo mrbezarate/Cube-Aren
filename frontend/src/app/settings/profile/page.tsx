@@ -39,6 +39,8 @@ export default function SettingsProfilePage() {
   const [bio, setBio] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [bannerUrl, setBannerUrl] = useState('');
+  const [cardBannerUrl, setCardBannerUrl] = useState('');
+  const [uploadingCardBanner, setUploadingCardBanner] = useState(false);
   const [country, setCountry] = useState('');
   const [city, setCity] = useState('');
   const [gender, setGender] = useState<Gender>('other');
@@ -67,6 +69,7 @@ export default function SettingsProfilePage() {
       setBio(data.bio || '');
       setAvatarUrl(data.avatarUrl || '');
       setBannerUrl(data.bannerUrl || '');
+      setCardBannerUrl(data.cardBannerUrl || '');
       setCountry(data.country || '');
       setCity(data.city || '');
       setGender(data.gender || 'other');
@@ -77,6 +80,31 @@ export default function SettingsProfilePage() {
       toast.error('Не удалось загрузить профиль');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCardBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Размер файла превышает 5 МБ');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    setUploadingCardBanner(true);
+    try {
+      const res = await api.users.uploadCardBanner(formData);
+      setCardBannerUrl(res.cardBannerUrl);
+      toast.success('Фон карточки успешно загружен!');
+    } catch (error: any) {
+      console.error('Card banner upload error:', error);
+      toast.error(error.response?.data?.message || 'Ошибка при загрузке фона');
+    } finally {
+      setUploadingCardBanner(false);
     }
   };
 
@@ -108,6 +136,10 @@ export default function SettingsProfilePage() {
     }
     if (bannerUrl !== (profileData.bannerUrl || '')) {
       updates.bannerUrl = bannerUrl;
+      hasChanges = true;
+    }
+    if (cardBannerUrl !== (profileData.cardBannerUrl || '')) {
+      updates.cardBannerUrl = cardBannerUrl;
       hasChanges = true;
     }
     if (country !== (profileData.country || '')) {
@@ -320,6 +352,54 @@ export default function SettingsProfilePage() {
                     : 'часов'}
                 .
               </p>
+            </div>
+          )}
+        </div>
+
+        {/* Card Background Banner Upload */}
+        <div>
+          <label className="block text-sm font-orbitron font-semibold text-gray-300 mb-2">
+            Фон карточки профиля (PNG, JPEG, GIF)
+          </label>
+          <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
+            <input
+              type="text"
+              value={cardBannerUrl}
+              onChange={(e) => setCardBannerUrl(e.target.value)}
+              placeholder="https://example.com/card-banner.jpg или загрузите файл"
+              className="flex-1 px-4 py-3 bg-arena-dark border border-arena-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-neon-purple transition-colors"
+            />
+            <div className="relative">
+              <input
+                type="file"
+                accept="image/png, image/jpeg, image/jpg, image/gif"
+                onChange={handleCardBannerUpload}
+                disabled={uploadingCardBanner}
+                className="absolute inset-0 opacity-0 w-full h-full cursor-pointer disabled:cursor-not-allowed"
+              />
+              <Button
+                variant="secondary"
+                disabled={uploadingCardBanner}
+                type="button"
+                className="w-full sm:w-auto h-full"
+              >
+                {uploadingCardBanner ? 'Загрузка...' : 'Загрузить файл'}
+              </Button>
+            </div>
+          </div>
+          {cardBannerUrl && (
+            <div className="mt-3">
+              <div className="relative w-full max-w-sm h-32 rounded-lg overflow-hidden border-2 border-arena-border bg-arena-dark flex items-center justify-center">
+                <img
+                  src={cardBannerUrl}
+                  alt="Card Banner Preview"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+              </div>
+              <span className="text-xs text-gray-400 mt-2 block">Предпросмотр фона карточки</span>
             </div>
           )}
         </div>

@@ -5,6 +5,8 @@ import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from '@/lib/store/auth.store';
 import { useOnboardingStore } from '@/lib/store/onboarding.store';
 import Navbar from '@/components/ui/Navbar';
+import Sidebar from '@/components/ui/Sidebar';
+import BottomTabBar from '@/components/ui/BottomTabBar';
 import OnboardingModal from '@/components/onboarding/OnboardingModal';
 import '@/app/globals.css';
 
@@ -37,7 +39,7 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </head>
-      <body className="bg-arena-dark min-h-screen text-gray-100 flex flex-col font-space">
+      <body className="bg-bg-primary min-h-screen text-text-primary flex flex-col font-sans">
         <Toaster
           position="top-right"
           toastOptions={{
@@ -50,9 +52,13 @@ export default function RootLayout({
           }}
         />
         <Navbar />
-        <main className="flex-1 flex flex-col">
-          {children}
-        </main>
+        <div className="flex min-h-0 flex-1">
+          <Sidebar />
+          <main className="min-w-0 flex-1 pb-20 md:pb-0">
+            {children}
+          </main>
+        </div>
+        <BottomTabBar />
         
         {/* Global onboarding modal (opens after registration) */}
         <OnboardingModal />

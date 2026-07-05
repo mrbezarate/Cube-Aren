@@ -68,6 +68,9 @@ export class User {
   @Column({ nullable: true })
   bannerUrl: string;
 
+  @Column({ name: 'card_banner_url', nullable: true })
+  cardBannerUrl: string;
+
   @Column({ nullable: true })
   country: string;
 

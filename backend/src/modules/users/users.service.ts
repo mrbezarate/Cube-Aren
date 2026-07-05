@@ -413,6 +413,7 @@ export class UsersService {
     if (dto.country !== undefined) updateData.country = this.normalizeProfileValue(dto.country);
     if (dto.city !== undefined) updateData.city = this.normalizeProfileValue(dto.city);
     if (dto.mainGame !== undefined) updateData.mainGame = dto.mainGame;
+    if (dto.cardBannerUrl !== undefined) updateData.cardBannerUrl = this.normalizeProfileValue(dto.cardBannerUrl);
 
     await this.usersRepo.update(userId, updateData);
 
@@ -583,6 +584,24 @@ export class UsersService {
     const safePage = Number(page) || 1;
     const safeLimit = Number(limit) || 50;
     const skip = (safePage - 1) * safeLimit;
+
+    // Находим всех пользователей, у которых нет статистики по данной игре
+    const usersWithoutStats = await this.usersRepo.createQueryBuilder('u')
+      .leftJoin('player_stats', 'ps', 'ps.user_id = u.id AND ps.game = :game', { game })
+      .where('ps.id IS NULL')
+      .getMany();
+
+    if (usersWithoutStats.length > 0) {
+      const defaultStats = usersWithoutStats.map(u => this.playerStatsRepo.create({
+        userId: u.id,
+        game,
+        rating: 1000,
+        wins: 0,
+        losses: 0,
+      }));
+      await this.playerStatsRepo.save(defaultStats);
+    }
+
     const rankedStats = await this.rankStatsForGame(game);
     const pageItems = rankedStats.slice(skip, skip + safeLimit);
     const teamMemberships = await this.getTeamMemberships(

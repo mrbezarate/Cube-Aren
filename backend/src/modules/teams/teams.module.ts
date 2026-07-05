@@ -6,9 +6,15 @@ import { Team } from '../../entities/team.entity';
 import { TeamMember } from '../../entities/team-member.entity';
 import { TeamJoinRequest } from '../../entities/team-join-request.entity';
 import { User } from '../../entities/user.entity';
+import { WalletModule } from '../wallet/wallet.module';
+import { ChatModule } from '../chat/chat.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Team, TeamMember, TeamJoinRequest, User])],
+  imports: [
+    TypeOrmModule.forFeature([Team, TeamMember, TeamJoinRequest, User]),
+    WalletModule,
+    ChatModule,
+  ],
   controllers: [TeamsController],
   providers: [TeamsService],
   exports: [TeamsService],

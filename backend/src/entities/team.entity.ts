@@ -27,7 +27,7 @@ export class Team {
   @Column({ nullable: true })
   logoUrl: string;
 
-  @Column()
+  @Column({ name: 'captain_id', type: 'uuid' })
   captainId: string; // Создатель и капитан команды
 
   @ManyToOne(() => User)

@@ -37,6 +37,7 @@ import { PrivacySettings } from './entities/privacy-settings.entity';
 import { NotificationSettings } from './entities/notification-settings.entity';
 import { UserPreferences } from './entities/user-preferences.entity';
 import { BlockedUser } from './entities/blocked-user.entity';
+import { Match } from './entities/match.entity';
 
 @Module({
   imports: [
@@ -58,7 +59,7 @@ import { BlockedUser } from './entities/blocked-user.entity';
         username: configService.get('DB_USER', 'arena_user'),
         password: configService.get('DB_PASSWORD', 'arena_secret_password'),
         database: configService.get('DB_NAME', 'underground_arena'),
-        entities: [User, Tournament, Participant, Bet, Transaction, OnboardingAnswer, SavedTournament, PlayerStats, Follow, Team, TeamMember, TeamJoinRequest, FriendRequest, Friendship, ChatRoom, Message, TournamentView, ProfileView, TournamentReport, PrivacySettings, NotificationSettings, UserPreferences, BlockedUser],
+        entities: [User, Tournament, Participant, Bet, Transaction, OnboardingAnswer, SavedTournament, PlayerStats, Follow, Team, TeamMember, TeamJoinRequest, FriendRequest, Friendship, ChatRoom, Message, TournamentView, ProfileView, TournamentReport, PrivacySettings, NotificationSettings, UserPreferences, BlockedUser, Match],
         synchronize: true,
         logging: configService.get('NODE_ENV') === 'development',
         ssl: false,

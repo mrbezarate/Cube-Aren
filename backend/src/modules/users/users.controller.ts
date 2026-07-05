@@ -11,7 +11,13 @@ import {
   UseGuards,
   Inject,
   forwardRef,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
 import { Throttle } from '@nestjs/throttler';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { UsersService } from './users.service';
@@ -108,6 +114,43 @@ export class UsersController {
   @ApiOperation({ summary: 'Update user profile (bio, avatar, gender, mainGame)' })
   updateProfile(@CurrentUser('id') userId: string, @Body() dto: UpdateProfileDto) {
     return this.usersService.updateProfile(userId, dto);
+  }
+
+  @Post('profile/card-banner')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @UseInterceptors(FileInterceptor('file', {
+    storage: diskStorage({
+      destination: './uploads/card-banners',
+      filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+        const ext = extname(file.originalname);
+        cb(null, `${uniqueSuffix}${ext}`);
+      },
+    }),
+    fileFilter: (req, file, cb) => {
+      const allowedMimeTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif'];
+      if (allowedMimeTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new BadRequestException('Разрешены только файлы изображений формата PNG, JPEG, JPG или GIF'), false);
+      }
+    },
+    limits: {
+      fileSize: 5 * 1024 * 1024, // 5MB
+    },
+  }))
+  @ApiOperation({ summary: 'Upload card background banner (PNG, JPEG, GIF)' })
+  async uploadCardBanner(
+    @CurrentUser('id') userId: string,
+    @UploadedFile() file: any,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Файл не предоставлен');
+    }
+    const cardBannerUrl = `/api/uploads/card-banners/${file.filename}`;
+    await this.usersService.updateProfile(userId, { cardBannerUrl });
+    return { cardBannerUrl };
   }
 
   // ========== STATS & LEADERBOARD ENDPOINTS ==========

@@ -32,7 +32,7 @@ function AuthCallbackContent() {
             router.push('/');
             openOnboarding();
           } else {
-            router.push('/dashboard');
+            router.push(`/profile/${profile.id}`);
           }
         } catch {
           toast.error('Ошибка входа через социальную сеть');

@@ -26,15 +26,27 @@ export class ParticipantsController {
   join(
     @Param('tournamentId', ParseUUIDPipe) tournamentId: string,
     @CurrentUser('id') userId: string,
-    @Body('teamName') teamName?: string,
+    @Body('teamSlot') teamSlot?: number,
+    @Body('teamLabel') teamLabel?: string,
+    @Body('clanId') clanId?: string,
   ) {
-    return this.participantsService.join(tournamentId, userId, teamName);
+    return this.participantsService.join(tournamentId, userId, {
+      teamSlot: teamSlot ? Number(teamSlot) : undefined,
+      teamLabel,
+      clanId,
+    });
   }
 
   @Get('participants')
   @ApiOperation({ summary: 'Get tournament participants' })
   getByTournament(@Param('tournamentId', ParseUUIDPipe) tournamentId: string) {
     return this.participantsService.getByTournament(tournamentId);
+  }
+
+  @Get('participants/grouped')
+  @ApiOperation({ summary: 'Get participants grouped by team slot (for team modes)' })
+  getByTournamentGrouped(@Param('tournamentId', ParseUUIDPipe) tournamentId: string) {
+    return this.participantsService.getByTournamentGrouped(tournamentId);
   }
 
   @Put('participants/:participantId/status')
@@ -53,11 +65,28 @@ export class ParticipantsController {
   @Post('winner/:participantId')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Declare tournament winner' })
-  declareWinner(
+  @ApiOperation({ summary: 'Declare tournament winner (legacy)' })
+  declareWinnerLegacy(
     @Param('tournamentId', ParseUUIDPipe) tournamentId: string,
     @Param('participantId', ParseUUIDPipe) participantId: string,
   ) {
-    return this.participantsService.declareWinner(tournamentId, participantId);
+    return this.participantsService.declareWinner(tournamentId, {
+      winnerParticipantId: participantId,
+    });
+  }
+
+  @Post('complete')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Complete tournament and declare winner (solo or team)' })
+  declareWinnerGeneric(
+    @Param('tournamentId', ParseUUIDPipe) tournamentId: string,
+    @Body('winnerParticipantId') winnerParticipantId?: string,
+    @Body('winnerTeamSlot') winnerTeamSlot?: number,
+  ) {
+    return this.participantsService.declareWinner(tournamentId, {
+      winnerParticipantId,
+      winnerTeamSlot: winnerTeamSlot !== undefined && winnerTeamSlot !== null ? Number(winnerTeamSlot) : undefined,
+    });
   }
 }

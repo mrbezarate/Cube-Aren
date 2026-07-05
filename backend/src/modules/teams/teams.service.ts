@@ -423,6 +423,7 @@ export class TeamsService {
           name: t.name,
           tag: t.tag,
           logoUrl: t.logoUrl,
+          captainId: t.captainId,
           captainName: t.captain.username,
           membersCount: t.membersCount,
           supportedGames: this.getTeamGames(t),

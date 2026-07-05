@@ -199,7 +199,18 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-arena-dark py-8">
       <div className="max-w-6xl mx-auto px-4">
-        <div className="bg-arena-card border border-arena-border rounded-2xl overflow-hidden mb-6">
+        <div 
+          className="bg-arena-card border border-arena-border rounded-2xl overflow-hidden mb-6"
+          style={
+            profile.cardBannerUrl
+              ? {
+                  backgroundImage: `linear-gradient(rgba(17, 17, 25, 0.82), rgba(17, 17, 25, 0.92)), url(${profile.cardBannerUrl})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                }
+              : undefined
+          }
+        >
           <div
             className="h-40 bg-gradient-to-r from-neon-purple/30 via-neon-blue/20 to-transparent"
             style={
@@ -261,7 +272,7 @@ export default function ProfilePage() {
                           <Eye className="w-4 h-4" />
                           Посетители
                         </Button>
-                        <Link href="/profile/edit">
+                        <Link href="/settings/profile">
                           <Button
                             variant="secondary"
                             className="flex items-center gap-2"

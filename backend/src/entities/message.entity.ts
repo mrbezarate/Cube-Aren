@@ -21,14 +21,14 @@ export class Message {
   @JoinColumn({ name: 'room_id' })
   room: ChatRoom;
 
-  @Column()
+  @Column({ name: 'room_id' })
   roomId: string;
 
   @ManyToOne(() => User, { eager: true, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'sender_id' })
   sender: User;
 
-  @Column()
+  @Column({ name: 'sender_id' })
   senderId: string;
 
   @Column({ type: 'text' })

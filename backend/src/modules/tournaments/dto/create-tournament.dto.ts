@@ -11,7 +11,7 @@ import {
   MaxLength,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { TournamentGame, TournamentFormat, TournamentType } from '../../../entities/tournament.entity';
+import { TournamentGame, TournamentFormat, TournamentType, GameMode } from '../../../entities/tournament.entity';
 
 export class CreateTournamentDto {
   @ApiProperty()
@@ -37,6 +37,11 @@ export class CreateTournamentDto {
   @IsOptional()
   @IsEnum(TournamentType)
   tournamentType?: TournamentType;
+
+  @ApiProperty({ enum: GameMode, default: GameMode.FFA })
+  @IsOptional()
+  @IsEnum(GameMode)
+  gameMode?: GameMode;
 
   @ApiProperty({ default: 0 })
   @IsNumber()
@@ -74,4 +79,29 @@ export class CreateTournamentDto {
   @Min(0)
   @Max(0.5)
   commissionRate?: number;
+
+  @ApiProperty({ required: false, default: 3 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(10)
+  roundsCount?: number;
+
+  // Для TWO_TEAM и MULTI_TEAM: сколько команд
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsInt()
+  @Min(2)
+  @Max(16)
+  teamsCount?: number;
+
+  // Для TWO_TEAM и MULTI_TEAM: игроков в одной команде
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  teamSize?: number;
 }
+
+

@@ -27,14 +27,14 @@ export class FriendRequest {
   @JoinColumn({ name: 'sender_id' })
   sender: User;
 
-  @Column()
+  @Column({ name: 'sender_id' })
   senderId: string;
 
   @ManyToOne(() => User, { eager: true, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'receiver_id' })
   receiver: User;
 
-  @Column()
+  @Column({ name: 'receiver_id' })
   receiverId: string;
 
   @Column({

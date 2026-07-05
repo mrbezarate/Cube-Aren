@@ -54,7 +54,7 @@ export default function RegisterPage() {
       
       // If user has not completed onboarding, open modal on main page
       if (res.user.onboardingCompleted) {
-        router.push('/dashboard');
+        router.push(`/profile/${res.user.id}`);
       } else {
         router.push('/');
         // Open modal globally - import store lazily to avoid SSR issues

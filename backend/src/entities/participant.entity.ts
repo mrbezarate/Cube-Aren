@@ -26,18 +26,34 @@ export class Participant {
   @JoinColumn({ name: 'tournament_id' })
   tournament: Tournament;
 
-  @Column()
+  @Column({ name: 'tournament_id' })
   tournamentId: string;
 
   @ManyToOne(() => User, { eager: true, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @Column()
+  @Column({ name: 'user_id' })
   userId: string;
 
   @Column({ nullable: true })
   teamName: string;
+
+  // Номер командного слота (1, 2, 3...). Null для FFA.
+  @Column({ name: 'team_slot', type: 'int', nullable: true })
+  teamSlot: number;
+
+  // Пользовательское название команды (может ставить только капитан)
+  @Column({ name: 'team_label', nullable: true })
+  teamLabel: string;
+
+  // Является ли первым в своей команде (капитан, может менять название)
+  @Column({ name: 'is_team_captain', default: false })
+  isTeamCaptain: boolean;
+
+  // ID клана, если участник зарегистрирован от лица клана
+  @Column({ name: 'clan_id', nullable: true })
+  clanId: string;
 
   @Column({ type: 'enum', enum: ParticipantStatus, default: ParticipantStatus.REGISTERED })
   status: ParticipantStatus;

@@ -43,7 +43,7 @@ export default function LoginPage() {
       const res = await api.auth.login(data);
       login(res.user, res.accessToken, res.refreshToken);
       toast.success('С возвращением на Арену!');
-      router.push(res.user.onboardingCompleted ? '/dashboard' : '/onboarding');
+      router.push(res.user.onboardingCompleted ? `/profile/${res.user.id}` : '/');
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Ошибка входа. Проверьте данные.');
     } finally {

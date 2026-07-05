@@ -138,6 +138,11 @@ export const api = {
     getProfile: (id: string) => apiInstance.get<User>(`/users/${id}`).then(r => r.data),
     getFullProfile: (id: string) => apiInstance.get<UserProfile>(`/users/${id}/profile`).then(r => r.data),
     updateProfile: (data: any) => apiInstance.patch<User>('/users/profile', data).then(r => r.data),
+    uploadCardBanner: (formData: FormData) => apiInstance.post<any>('/users/profile/card-banner', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }).then(r => r.data),
     getAllStats: (id: string) => apiInstance.get<PlayerStats[]>(`/users/${id}/stats`).then(r => r.data),
     getGameStats: (id: string, game: GameType) => apiInstance.get<PlayerStats>(`/users/${id}/stats/${game}`).then(r => r.data),
     getLeaderboard: (game: GameType, page?: number, limit?: number) => 
@@ -198,15 +203,19 @@ export const api = {
     save: (id: string) => apiInstance.post<{ message: string }>(`/tournaments/${id}/save`).then(r => r.data),
     unsave: (id: string) => apiInstance.delete<{ message: string }>(`/tournaments/${id}/save`).then(r => r.data),
     trackView: (id: string) => apiInstance.post<{ message: string }>(`/tournaments/${id}/view`).then(r => r.data),
+    getMatches: (id: string) => apiInstance.get<any[]>(`/tournaments/${id}/matches`).then(r => r.data),
+    updateMatch: (id: string, matchId: string, data: any) => apiInstance.put<any>(`/tournaments/${id}/matches/${matchId}`, data).then(r => r.data),
   },
   participants: {
-    join: (tournamentId: string, teamName?: string) => apiInstance.post<Participant>(`/tournaments/${tournamentId}/join`, { teamName }).then(r => r.data),
+    join: (tournamentId: string, opts?: { teamSlot?: number; teamLabel?: string; clanId?: string }) => apiInstance.post<Participant>(`/tournaments/${tournamentId}/join`, opts ?? {}).then(r => r.data),
     getByTournament: (tournamentId: string) => apiInstance.get<Participant[]>(`/tournaments/${tournamentId}/participants`).then(r => r.data),
+    getGrouped: (tournamentId: string) => apiInstance.get<any>(`/tournaments/${tournamentId}/participants/grouped`).then(r => r.data),
     updateStatus: (tournamentId: string, participantId: string, status: string, placement?: number) => apiInstance.put<Participant>(`/tournaments/${tournamentId}/participants/${participantId}/status`, { status, placement }).then(r => r.data),
     declareWinner: (tournamentId: string, participantId: string) => apiInstance.post<void>(`/tournaments/${tournamentId}/winner/${participantId}`).then(r => r.data),
+    completeTournament: (tournamentId: string, data: { winnerParticipantId?: string; winnerTeamSlot?: number }) => apiInstance.post<void>(`/tournaments/${tournamentId}/complete`, data).then(r => r.data),
   },
   bets: {
-    place: (data: { tournamentId: string; predictedWinnerId: string; amount: number }) => apiInstance.post<Bet>('/bets', data).then(r => r.data),
+    place: (data: { tournamentId: string; predictedWinnerId?: string; predictedTeamSlot?: number; matchId?: string; predictedSide?: number; amount: number }) => apiInstance.post<Bet>('/bets', data).then(r => r.data),
     getMy: (params?: { page?: number; limit?: number }) => apiInstance.get<{ data: Bet[]; total: number }>('/bets/me', { params }).then(r => r.data),
     getTournamentBets: (tournamentId: string) => apiInstance.get<Bet[]>(`/bets/tournament/${tournamentId}`).then(r => r.data),
     getOdds: (tournamentId: string) => apiInstance.get<OddsData[]>(`/bets/tournament/${tournamentId}/odds`).then(r => r.data),

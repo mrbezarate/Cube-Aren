@@ -6,7 +6,15 @@ export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
   // Routes that require authentication
-  const protectedRoutes = ['/dashboard', '/create'];
+  const protectedRoutes = [
+    '/dashboard',
+    '/create',
+    '/chat',
+    '/friends',
+    '/wallet',
+    '/saved',
+    '/settings',
+  ];
   const needsAuth = protectedRoutes.some((route) => path.startsWith(route));
 
   // If no token and trying to access protected route, redirect to login
@@ -15,23 +23,8 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Validate token if present
   if (token && needsAuth) {
-    try {
-      // Decode JWT token (simple base64 decode for payload)
-      const payload = JSON.parse(
-        Buffer.from(token.split('.')[1], 'base64').toString()
-      );
-      
-      // Token is valid, allow access
-      return NextResponse.next();
-    } catch (error) {
-      // Token is invalid, clear cookies and redirect to login
-      const response = NextResponse.redirect(new URL('/auth/login', request.url));
-      response.cookies.delete('token');
-      response.cookies.delete('refreshToken');
-      return response;
-    }
+    return NextResponse.next();
   }
 
   return NextResponse.next();

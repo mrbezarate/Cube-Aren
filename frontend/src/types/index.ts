@@ -9,6 +9,7 @@ export interface User {
   role: 'participant' | 'organizer' | 'admin';
   avatarUrl?: string;
   bannerUrl?: string;
+  cardBannerUrl?: string;
   tagline?: string;
   country?: string;
   city?: string;
@@ -130,6 +131,7 @@ export interface TeamLeaderboardEntry {
     name: string;
     tag?: string;
     logoUrl?: string;
+    captainId?: string;
     captainName?: string;
     membersCount: number;
     supportedGames?: GameType[];
@@ -200,6 +202,7 @@ export type TournamentGame = GameType;
 export type TournamentFormat = '1v1' | '5v5' | 'battle_royale' | 'custom';
 export type TournamentStatus = 'draft' | 'open' | 'in_progress' | 'completed' | 'cancelled';
 export type TournamentType = 'solo' | 'team';
+export type GameMode = 'ffa' | 'two_team' | 'multi_team';
 
 export interface Tournament {
   id: string;
@@ -226,6 +229,10 @@ export interface Tournament {
   viewsCount: number;
   savesCount: number;
   isSaved?: boolean; // populated per-user
+  gameMode: GameMode;
+  teamsCount?: number;
+  teamSize?: number;
+  roundsCount?: number;
   createdAt: string;
 }
 
@@ -234,6 +241,10 @@ export interface Participant {
   user: User;
   userId: string;
   teamName?: string;
+  teamSlot?: number;
+  teamLabel?: string;
+  isTeamCaptain?: boolean;
+  clanId?: string;
   status: 'registered' | 'checked_in' | 'playing' | 'eliminated' | 'winner';
   placement?: number;
   joinedAt: string;

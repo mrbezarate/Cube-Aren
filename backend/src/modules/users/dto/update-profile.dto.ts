@@ -43,6 +43,10 @@ export class UpdateProfileDto {
 
   @IsOptional()
   @IsString()
+  cardBannerUrl?: string;
+
+  @IsOptional()
+  @IsString()
   @MaxLength(50)
   country?: string;
 

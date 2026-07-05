@@ -281,9 +281,16 @@ export default function LeaderboardPage() {
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
-                              <span className="text-sm text-gray-300">
-                                {entry.team.captainName || 'Не указан'}
-                              </span>
+                              {entry.team.captainId ? (
+                                <Link
+                                  href={`/profile/${entry.team.captainId}`}
+                                  className="text-sm text-gray-300 hover:text-neon-blue transition-colors font-semibold"
+                                >
+                                  {entry.team.captainName || 'Не указан'}
+                                </Link>
+                              ) : (
+                                <span className="text-sm text-gray-500">Не указан</span>
+                              )}
                             </td>
                           </tr>
                         ))}

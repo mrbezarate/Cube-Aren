@@ -12,6 +12,10 @@ import { SavedTournament } from '../../entities/saved-tournament.entity';
 import { TournamentView } from '../../entities/tournament-view.entity';
 import { TournamentReport } from '../../entities/tournament-report.entity';
 import { User } from '../../entities/user.entity';
+import { Match } from '../../entities/match.entity';
+import { Bet, BetStatus } from '../../entities/bet.entity';
+import { WalletService } from '../wallet/wallet.service';
+import { TransactionType } from '../../entities/transaction.entity';
 import { CreateTournamentDto } from './dto/create-tournament.dto';
 import { FilterTournamentDto } from './dto/filter-tournament.dto';
 
@@ -28,6 +32,11 @@ export class TournamentsService {
     private tournamentReportRepo: Repository<TournamentReport>,
     @InjectRepository(User)
     private usersRepo: Repository<User>,
+    @InjectRepository(Match)
+    private matchesRepo: Repository<Match>,
+    @InjectRepository(Bet)
+    private betsRepo: Repository<Bet>,
+    private walletService: WalletService,
   ) {}
 
   async findAll(filters: FilterTournamentDto) {
@@ -129,7 +138,27 @@ export class TournamentsService {
       status: TournamentStatus.OPEN,
       prizePool: 0,
     });
-    return this.tournamentsRepo.save(tournament);
+    const saved = await this.tournamentsRepo.save(tournament);
+
+    // Auto-create matches
+    const rounds = saved.roundsCount || 3;
+    const matchesToCreate = [];
+    for (let i = 1; i <= rounds; i++) {
+      matchesToCreate.push(
+        this.matchesRepo.create({
+          tournamentId: saved.id,
+          name: `Раунд ${i}`,
+          team1Name: `Команда А`,
+          team2Name: `Команда Б`,
+          team1Odds: 1.85,
+          team2Odds: 1.85,
+          status: 'pending',
+        }),
+      );
+    }
+    await this.matchesRepo.save(matchesToCreate);
+
+    return saved;
   }
 
   async update(id: string, dto: Partial<CreateTournamentDto>, userId: string): Promise<Tournament> {
@@ -262,7 +291,7 @@ export class TournamentsService {
       order: { savedAt: 'DESC' },
     });
 
-    return saved.map((s) => s.tournament);
+    return saved.filter((s) => s.tournament !== null).map((s) => s.tournament);
   }
 
   async isTournamentSaved(userId: string, tournamentId: string): Promise<boolean> {
@@ -373,5 +402,79 @@ export class TournamentsService {
       activeTournaments,
       recentReports: reports,
     };
+  }
+
+  async getMatches(tournamentId: string): Promise<Match[]> {
+    return this.matchesRepo.find({
+      where: { tournamentId },
+      order: { name: 'ASC' },
+    });
+  }
+
+  async updateMatch(
+    tournamentId: string,
+    matchId: string,
+    userId: string,
+    data: {
+      team1Name?: string;
+      team2Name?: string;
+      team1Odds?: number;
+      team2Odds?: number;
+      winnerSide?: number;
+    },
+  ): Promise<Match> {
+    const tournament = await this.findOne(tournamentId);
+    if (tournament.organizerId !== userId) {
+      throw new ForbiddenException('Только организатор может редактировать матчи');
+    }
+
+    const match = await this.matchesRepo.findOne({
+      where: { id: matchId, tournamentId },
+    });
+    if (!match) {
+      throw new NotFoundException('Матч не найден');
+    }
+
+    // Если объявляется победитель и матч еще не завершен
+    if (data.winnerSide && match.status !== 'completed') {
+      match.winnerSide = data.winnerSide;
+      match.status = 'completed';
+      
+      // Распределяем ставки
+      const bets = await this.betsRepo.find({
+        where: { matchId: match.id, status: BetStatus.PENDING },
+      });
+
+      const winOdds = data.winnerSide === 1 ? (data.team1Odds || match.team1Odds) : (data.team2Odds || match.team2Odds);
+
+      for (const bet of bets) {
+        if (bet.predictedSide === data.winnerSide) {
+          // Выигрыш!
+          const winAmount = Math.round(Number(bet.amount) * Number(winOdds) * 100) / 100;
+          await this.walletService.addCredits(
+            bet.bettorId,
+            winAmount,
+            TransactionType.PRIZE,
+            match.id,
+            `Выигрыш ставки на матч ${match.name} в турнире ${tournament.title}`,
+          );
+          bet.status = BetStatus.WON;
+          bet.payout = winAmount;
+        } else {
+          // Проигрыш
+          bet.status = BetStatus.LOST;
+          bet.payout = 0;
+        }
+        bet.resolvedAt = new Date();
+        await this.betsRepo.save(bet);
+      }
+    }
+
+    if (data.team1Name !== undefined) match.team1Name = data.team1Name;
+    if (data.team2Name !== undefined) match.team2Name = data.team2Name;
+    if (data.team1Odds !== undefined) match.team1Odds = data.team1Odds;
+    if (data.team2Odds !== undefined) match.team2Odds = data.team2Odds;
+
+    return this.matchesRepo.save(match);
   }
 }

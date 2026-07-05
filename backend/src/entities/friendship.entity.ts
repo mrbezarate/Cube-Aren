@@ -19,14 +19,14 @@ export class Friendship {
   @JoinColumn({ name: 'user1_id' })
   user1: User;
 
-  @Column()
+  @Column({ name: 'user1_id' })
   user1Id: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user2_id' })
   user2: User;
 
-  @Column()
+  @Column({ name: 'user2_id' })
   user2Id: string;
 
   @CreateDateColumn()

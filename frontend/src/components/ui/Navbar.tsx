@@ -1,166 +1,115 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
+import { BarChart3, Coins, Gamepad2, MessageSquare } from 'lucide-react';
+import clsx from 'clsx';
 import { useAuthStore } from '@/lib/store/auth.store';
-import { Menu, X, Coins, User, LogOut, LayoutDashboard, PlusCircle, Gamepad2, MessageSquare } from 'lucide-react';
 import Button from './Button';
+import NotificationDropdown from './NotificationDropdown';
+import ProfileDropdown from './ProfileDropdown';
+import { useSocket } from '@/lib/hooks/useSocket';
+import { useEffect } from 'react';
+
+const PUBLIC_LINKS = [
+  { href: '/tournaments', label: 'Турниры', icon: Gamepad2 },
+  { href: '/community', label: 'Сообщество', icon: MessageSquare },
+  { href: '/leaderboard', label: 'Рейтинг', icon: BarChart3 },
+];
 
 export default function Navbar() {
-  const { isAuthenticated, user, logout } = useAuthStore();
-  const [isOpen, setIsOpen] = useState(false);
-  const router = useRouter();
   const pathname = usePathname();
+  const { isAuthenticated, user, isLoading, setUser } = useAuthStore();
+  const { socket } = useSocket();
 
-  const handleLogout = () => {
-    logout();
-    router.push('/');
-  };
+  useEffect(() => {
+    if (!socket || !isAuthenticated || !user) return;
 
-  const navLinks = [
-    { href: '/tournaments', label: 'Турниры', icon: Gamepad2 },
-    { href: '/community', label: 'Сообщество', icon: MessageSquare },
-  ];
+    const handleBalanceUpdated = (data: { balance: number }) => {
+      setUser({
+        ...user,
+        credits: data.balance,
+      });
+    };
 
-  if (isAuthenticated && (user?.role === 'organizer' || user?.role === 'admin')) {
-    navLinks.push({ href: '/create', label: 'Создать', icon: PlusCircle });
-  }
+    socket.on('balance_updated', handleBalanceUpdated);
 
-  if (isAuthenticated) {
-    navLinks.push({ href: '/dashboard', label: 'Кабинет', icon: LayoutDashboard });
-  }
+    return () => {
+      socket.off('balance_updated', handleBalanceUpdated);
+    };
+  }, [socket, isAuthenticated, user, setUser]);
 
   return (
-    <nav className="sticky top-0 w-full z-50 bg-[#0c0c0f]/80 backdrop-blur-xl border-b border-white/[0.06]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-accent-primary flex items-center justify-center">
-              <span className="text-white font-bold text-lg">U</span>
+    <nav className="sticky top-0 z-50 w-full border-b border-border-subtle bg-bg-primary/90 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+        <div className="flex min-w-0 items-center gap-6">
+          <Link href="/" className="flex shrink-0 items-center gap-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent-primary text-sm font-bold text-white">
+              UA
             </div>
-            <span className="font-semibold text-lg text-white hidden sm:block">Underground</span>
+            <div className="hidden leading-tight sm:block">
+              <div className="text-sm font-semibold text-text-primary">Underground</div>
+              <div className="text-xs text-text-tertiary">Arena</div>
+            </div>
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-1">
-            {navLinks.map((link) => {
-              const isActive = pathname === link.href;
+          <div className="hidden items-center gap-1 md:flex">
+            {PUBLIC_LINKS.map((link) => {
               const Icon = link.icon;
+              const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
+
               return (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    isActive
-                      ? 'bg-bg-tertiary text-white'
-                      : 'text-text-secondary hover:text-white hover:bg-bg-tertiary'
-                  }`}
+                  className={clsx(
+                    'flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                    active
+                      ? 'bg-bg-tertiary text-text-primary'
+                      : 'text-text-secondary hover:bg-bg-tertiary hover:text-text-primary',
+                  )}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="h-4 w-4" />
                   {link.label}
                 </Link>
               );
             })}
-          </div>
-
-          {/* Right Section */}
-          <div className="hidden md:flex items-center gap-3">
-            {isAuthenticated && user ? (
-              <div className="flex items-center gap-4">
-                {/* Balance */}
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-bg-tertiary border border-white/[0.06]">
-                  <Coins className="w-4 h-4 text-text-secondary" />
-                  <span className="font-medium text-sm text-white">{Number(user.credits).toLocaleString()}</span>
-                  <span className="text-xs text-text-tertiary">CR</span>
-                </div>
-
-                {/* Profile */}
-                <Link href={`/profile/${user.id}`} className="flex items-center gap-3 hover:bg-bg-tertiary rounded-lg p-2 -m-2 transition-colors">
-                  <div className="w-8 h-8 rounded-lg bg-bg-elevated overflow-hidden flex items-center justify-center border border-white/[0.06]">
-                    {user.avatarUrl ? (
-                      <img src={user.avatarUrl} alt={user.username} className="w-full h-full object-cover" />
-                    ) : (
-                      <User className="w-4 h-4 text-text-tertiary" />
-                    )}
-                  </div>
-                  <div className="flex flex-col text-left">
-                    <span className="text-sm font-medium text-white max-w-[100px] truncate">{user.username}</span>
-                    <span className="text-xs text-text-tertiary">{user.role}</span>
-                  </div>
-                </Link>
-
-                {/* Logout */}
-                <button
-                  onClick={handleLogout}
-                  className="p-2 rounded-lg text-text-tertiary hover:text-white hover:bg-bg-tertiary transition-colors"
-                  title="Выйти"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Link href="/auth/login">
-                  <Button variant="ghost" size="sm">Войти</Button>
-                </Link>
-                <Link href="/auth/register">
-                  <Button variant="primary" size="sm">Регистрация</Button>
-                </Link>
-              </div>
-            )}
-          </div>
-
-          {/* Mobile Menu Button */}
-          <div className="md:hidden flex items-center">
-            <button
-              onClick={() => setIsOpen(!isOpen)}
-              className="p-2 rounded-lg text-text-secondary hover:text-white hover:bg-bg-tertiary transition-colors"
-            >
-              {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
           </div>
         </div>
-      </div>
 
-      {/* Mobile Menu */}
-      {isOpen && (
-        <div className="md:hidden bg-bg-secondary border-t border-white/[0.06]">
-          <div className="px-4 py-3 space-y-1">
-            {navLinks.map((link) => {
-              const isActive = pathname === link.href;
-              const Icon = link.icon;
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setIsOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-bg-tertiary text-white'
-                      : 'text-text-secondary hover:text-white hover:bg-bg-tertiary'
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  {link.label}
-                </Link>
-              );
-            })}
-          </div>
-          
-          {!isAuthenticated && (
-            <div className="px-4 py-3 border-t border-white/[0.06] space-y-2">
-              <Link href="/auth/login" onClick={() => setIsOpen(false)}>
-                <Button variant="secondary" className="w-full">Войти</Button>
+        <div className="flex shrink-0 items-center gap-2">
+          {!isLoading && isAuthenticated && user ? (
+            <>
+              <Link
+                href="/wallet"
+                className="hidden items-center gap-2 rounded-lg border border-border-subtle bg-bg-secondary px-3 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-bg-tertiary sm:flex"
+              >
+                <Coins className="h-4 w-4 text-accent-warning" />
+                <span>{Number(user.credits).toLocaleString()}</span>
+                <span className="text-xs text-text-tertiary">CR</span>
               </Link>
-              <Link href="/auth/register" onClick={() => setIsOpen(false)}>
-                <Button variant="primary" className="w-full">Регистрация</Button>
+              <NotificationDropdown />
+              <ProfileDropdown user={user} />
+            </>
+          ) : (
+            <div className="hidden items-center gap-2 sm:flex">
+              <Link href="/auth/login">
+                <Button variant="ghost" size="sm">Войти</Button>
+              </Link>
+              <Link href="/auth/register">
+                <Button variant="primary" size="sm">Регистрация</Button>
               </Link>
             </div>
           )}
+
+          {!isLoading && !isAuthenticated ? (
+            <Link href="/auth/login" className="sm:hidden">
+              <Button variant="secondary" size="sm">Войти</Button>
+            </Link>
+          ) : null}
         </div>
-      )}
+      </div>
     </nav>
   );
 }

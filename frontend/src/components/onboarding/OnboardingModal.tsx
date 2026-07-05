@@ -110,7 +110,7 @@ export default function OnboardingModal() {
       complete();
       close();
       toast.success('Добро пожаловать в Underground Arena! 🎮');
-      router.push('/dashboard');
+      router.push(`/profile/${updatedUser.id}`);
     } catch (error: any) {
       console.error('Onboarding error:', error);
       if (error.response?.data?.message) {

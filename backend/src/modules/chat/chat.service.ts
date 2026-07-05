@@ -39,7 +39,6 @@ export class ChatService {
       console.log(`[ChatService] Follow check: follow1=${!!follow1}, follow2=${!!follow2}`);
 
       if (!follow1 || !follow2) {
-        await queryRunner.rollbackTransaction();
         throw new BadRequestException('Вы можете писать только друзьям (нужна взаимная подписка)');
       }
 
@@ -73,7 +72,10 @@ export class ChatService {
       console.log(`[ChatService] Returning room with relations: ${fullRoom?.id}`);
       return fullRoom;
     } catch (error) {
-      await queryRunner.rollbackTransaction();
+      // Откатываем только если транзакция ещё активна (избегаем двойного rollback)
+      if (queryRunner.isTransactionActive) {
+        await queryRunner.rollbackTransaction();
+      }
       console.error(`[ChatService] Error in getOrCreateRoom:`, error);
       throw error;
     } finally {

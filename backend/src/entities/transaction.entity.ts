@@ -17,6 +17,8 @@ export enum TransactionType {
   ENTRY_FEE = 'entry_fee',
   PRIZE = 'prize',
   REFUND = 'refund',
+  CLAN_CREATE = 'clan_create',
+  CLAN_REFUND = 'clan_refund',
 }
 
 @Entity('transactions')

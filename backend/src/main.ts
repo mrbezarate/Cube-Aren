@@ -3,6 +3,10 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
+import * as express from 'express';
+import { join } from 'path';
+import { existsSync, mkdirSync } from 'fs';
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
@@ -16,6 +20,17 @@ async function bootstrap() {
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   });
+
+  // Serve uploads statically
+  const uploadsDir = join(process.cwd(), 'uploads');
+  if (!existsSync(uploadsDir)) {
+    mkdirSync(uploadsDir, { recursive: true });
+  }
+  const bannersDir = join(uploadsDir, 'card-banners');
+  if (!existsSync(bannersDir)) {
+    mkdirSync(bannersDir, { recursive: true });
+  }
+  app.use('/api/uploads', express.static(uploadsDir));
 
   // Global validation pipe
   app.useGlobalPipes(
