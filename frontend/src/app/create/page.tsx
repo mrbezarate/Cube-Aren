@@ -121,8 +121,12 @@ export default function CreateTournamentPage() {
     if (data.gameMode === 'two_team') {
       finalData.teamsCount = 2;
       finalData.maxParticipants = 2 * (data.teamSize ?? 5);
+      finalData.tournamentType = 'team';
     } else if (data.gameMode === 'multi_team') {
       finalData.maxParticipants = (data.teamsCount ?? 3) * (data.teamSize ?? 5);
+      finalData.tournamentType = 'team';
+    } else {
+      finalData.tournamentType = 'solo';
     }
 
     setLoading(true);

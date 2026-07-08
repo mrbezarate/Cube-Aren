@@ -371,7 +371,13 @@ export default function ProfilePage() {
                     </div>
                     {profile.mainTeam ? (
                       <div className="text-xs text-gray-400 mt-2">
-                        Команда: <span className="text-neon-purple">{profile.mainTeam.name}</span>
+                        Команда:{' '}
+                        <Link
+                          href={`/teams/${profile.mainTeam.id}`}
+                          className="text-neon-purple hover:underline font-semibold"
+                        >
+                          {profile.mainTeam.name}
+                        </Link>
                       </div>
                     ) : null}
                   </div>
@@ -380,12 +386,13 @@ export default function ProfilePage() {
                     <div className="flex flex-wrap gap-2">
                       {profile.teams.length ? (
                         profile.teams.map((team) => (
-                          <span
+                          <Link
                             key={`${team.id}-${team.game}`}
-                            className="rounded-full bg-neon-purple/10 px-3 py-1 text-xs text-neon-purple"
+                            href={`/teams/${team.id}`}
+                            className="rounded-full bg-neon-purple/10 hover:bg-neon-purple/20 px-3 py-1 text-xs text-neon-purple hover:text-white transition-all"
                           >
                             {team.name} · {GAME_NAMES[team.game] || team.game}
-                          </span>
+                          </Link>
                         ))
                       ) : (
                         <span className="text-sm text-gray-500">Пока без команды</span>

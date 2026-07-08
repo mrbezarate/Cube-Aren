@@ -16,6 +16,7 @@ interface ChatRoom {
     username: string;
     displayName?: string;
     avatarUrl?: string;
+    cardBannerUrl?: string;
   };
   lastMessage?: string;
   lastMessageAt?: string;
@@ -42,6 +43,7 @@ interface Friend {
   username: string;
   displayName?: string;
   avatarUrl?: string;
+  cardBannerUrl?: string;
   mainGame?: string;
 }
 
@@ -360,9 +362,18 @@ function ChatPageContent() {
                 <button
                   key={friend.id}
                   onClick={() => handleSelectFriend(friend)}
-                  className={`w-full p-4 flex items-center gap-3 hover:bg-arena-dark/30 transition-all border-b border-arena-border/30 ${
+                  className={`w-full p-4 flex items-center gap-3 hover:bg-arena-dark/30 transition-all border-b border-arena-border/30 relative overflow-hidden group ${
                     isActive ? 'bg-neon-purple/15 border-l-4 border-l-neon-purple' : ''
                   }`}
+                  style={
+                    friend.cardBannerUrl
+                      ? {
+                          backgroundImage: `linear-gradient(90deg, rgba(17, 17, 25, 0.96) 0%, rgba(17, 17, 25, 0.88) 100%), url(${friend.cardBannerUrl})`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                        }
+                      : undefined
+                  }
                 >
                   <div className="relative flex-shrink-0">
                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-neon-purple to-neon-blue flex items-center justify-center text-white font-bold">
@@ -407,7 +418,18 @@ function ChatPageContent() {
           ) : selectedRoom ? (
             <>
               {/* Chat Header */}
-              <div className="p-5 border-b border-arena-border flex items-center gap-4 bg-arena-card/80 backdrop-blur-sm">
+              <div
+                className="p-5 border-b border-arena-border flex items-center gap-4 bg-arena-card/80 backdrop-blur-sm relative overflow-hidden"
+                style={
+                  selectedRoom.companion.cardBannerUrl
+                    ? {
+                        backgroundImage: `linear-gradient(90deg, rgba(17, 17, 25, 0.9) 0%, rgba(17, 17, 25, 0.75) 100%), url(${selectedRoom.companion.cardBannerUrl})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                      }
+                    : undefined
+                }
+              >
                 <button
                   onClick={() => {
                     setSelectedRoom(null);

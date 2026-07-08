@@ -13,6 +13,7 @@ import { Team } from './team.entity';
 export enum TeamRole {
   CAPTAIN = 'captain',
   VICE_CAPTAIN = 'vice_captain',
+  MODERATOR = 'moderator',
   MEMBER = 'member',
 }
 
@@ -36,8 +37,8 @@ export class TeamMember {
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @Column({ type: 'enum', enum: TeamRole, default: TeamRole.MEMBER })
-  role: TeamRole;
+  @Column({ type: 'varchar', default: 'member' })
+  role: string; // Роль участника: captain, vice_captain, moderator, member
 
   @CreateDateColumn()
   joinedAt: Date;

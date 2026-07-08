@@ -19,6 +19,8 @@ import {
   NotificationSettings,
   UserPreferences,
   BlockedUser,
+  CommunityPost,
+  CommunityComment,
 } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/api';
@@ -179,10 +181,20 @@ export const api = {
       tag?: string;
       description?: string;
       logoUrl?: string;
-      game: GameType;
-      supportedGames?: GameType[];
+      flag?: string;
+      game?: GameType;
+      supportedGames: GameType[];
       maxMembers?: number;
     }) => apiInstance.post<Team>('/teams', data).then((r) => r.data),
+    update: (id: string, data: {
+      description?: string;
+      logoUrl?: string;
+      bannerUrl?: string;
+      flag?: string;
+      tag?: string;
+      isRecruiting?: boolean;
+      supportedGames?: GameType[];
+    }) => apiInstance.put<Team>(`/teams/${id}`, data).then((r) => r.data),
     join: (id: string, data?: { message?: string }) =>
       apiInstance.post<{ message: string }>(`/teams/${id}/join`, data || {}).then((r) => r.data),
     leave: (id: string) => apiInstance.post<{ message: string }>(`/teams/${id}/leave`).then((r) => r.data),
@@ -190,6 +202,18 @@ export const api = {
       apiInstance.post<{ message: string }>(`/teams/${teamId}/requests/${requestId}/approve`).then((r) => r.data),
     rejectRequest: (teamId: string, requestId: string) =>
       apiInstance.post<{ message: string }>(`/teams/${teamId}/requests/${requestId}/reject`).then((r) => r.data),
+    updateMemberRole: (teamId: string, userId: string, role: string) =>
+      apiInstance.put<{ message: string }>(`/teams/${teamId}/members/${userId}/role`, { role }).then((r) => r.data),
+    kickMember: (id: string, userId: string) =>
+      apiInstance.delete<{ message: string }>(`/teams/${id}/members/${userId}`).then((r) => r.data),
+    uploadLogo: (id: string, formData: FormData) =>
+      apiInstance.post<any>(`/teams/${id}/logo`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      }).then((r) => r.data),
+    uploadBanner: (id: string, formData: FormData) =>
+      apiInstance.post<any>(`/teams/${id}/banner`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      }).then((r) => r.data),
   },
   tournaments: {
     getAll: (params: any) => apiInstance.get<{ data: Tournament[]; total: number; page: number; pages: number }>('/tournaments', { params }).then(r => r.data),
@@ -311,6 +335,28 @@ export const api = {
       apiInstance.delete<void>(`/account/sessions/${sessionId}`).then(r => r.data),
     terminateAllSessions: () =>
       apiInstance.delete<void>('/account/sessions').then(r => r.data),
+  },
+  community: {
+    listPosts: (params: { game?: string; tag?: string; sort?: string; search?: string; page?: number; limit?: number }) =>
+      apiInstance.get<{ data: CommunityPost[]; total: number; page: number; totalPages: number }>('/community/posts', { params }).then((r) => r.data),
+    getBoardsStats: () =>
+      apiInstance.get<Array<{ game: string; posts: number; comments: number }>>('/community/boards').then((r) => r.data),
+    getPost: (id: string) =>
+      apiInstance.get<CommunityPost>(`/community/posts/${id}`).then((r) => r.data),
+    createPost: (data: { game: string; tag: string; title: string; content: string }) =>
+      apiInstance.post<CommunityPost>('/community/posts', data).then((r) => r.data),
+    deletePost: (id: string) =>
+      apiInstance.delete<{ message: string }>(`/community/posts/${id}`).then((r) => r.data),
+    togglePostLike: (id: string) =>
+      apiInstance.post<{ liked: boolean; likesCount: number }>(`/community/posts/${id}/like`).then((r) => r.data),
+    listComments: (postId: string) =>
+      apiInstance.get<CommunityComment[]>(`/community/posts/${postId}/comments`).then((r) => r.data),
+    createComment: (postId: string, data: { content: string; parentId?: string }) =>
+      apiInstance.post<CommunityComment>(`/community/posts/${postId}/comments`, data).then((r) => r.data),
+    deleteComment: (id: string) =>
+      apiInstance.delete<{ message: string }>(`/community/comments/${id}`).then((r) => r.data),
+    toggleCommentLike: (id: string) =>
+      apiInstance.post<{ liked: boolean; likesCount: number }>(`/community/comments/${id}/like`).then((r) => r.data),
   },
 };
 export default apiInstance;

@@ -133,7 +133,19 @@ export default function ParticipantsList({
                 ) : (
                   <div className="space-y-2.5">
                     {team1.members.map((m) => (
-                      <div key={m.id} className="flex items-center justify-between bg-arena-dark/40 p-2 rounded-lg border border-arena-border/30">
+                      <div
+                        key={m.id}
+                        className="flex items-center justify-between p-2 rounded-lg border border-arena-border/30"
+                        style={
+                          m.user?.cardBannerUrl
+                            ? {
+                                backgroundImage: `linear-gradient(90deg, rgba(10, 10, 15, 0.93) 0%, rgba(10, 10, 15, 0.75) 100%), url(${m.user.cardBannerUrl})`,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                              }
+                            : { backgroundColor: 'rgba(10, 10, 15, 0.4)' }
+                        }
+                      >
                         <Link href={`/profile/${m.user?.id || ''}`} className="flex items-center gap-2.5 group">
                           <div className="w-8 h-8 rounded-full border border-arena-border/50 overflow-hidden relative">
                             {m.user?.avatarUrl ? (
@@ -186,7 +198,19 @@ export default function ParticipantsList({
                 ) : (
                   <div className="space-y-2.5">
                     {team2.members.map((m) => (
-                      <div key={m.id} className="flex items-center justify-between bg-arena-dark/40 p-2 rounded-lg border border-arena-border/30">
+                      <div
+                        key={m.id}
+                        className="flex items-center justify-between p-2 rounded-lg border border-arena-border/30"
+                        style={
+                          m.user?.cardBannerUrl
+                            ? {
+                                backgroundImage: `linear-gradient(90deg, rgba(10, 10, 15, 0.93) 0%, rgba(10, 10, 15, 0.75) 100%), url(${m.user.cardBannerUrl})`,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                              }
+                            : { backgroundColor: 'rgba(10, 10, 15, 0.4)' }
+                        }
+                      >
                         <Link href={`/profile/${m.user?.id || ''}`} className="flex items-center gap-2.5 group">
                           <div className="w-8 h-8 rounded-full border border-arena-border/50 overflow-hidden relative">
                             {m.user?.avatarUrl ? (
@@ -257,7 +281,19 @@ export default function ParticipantsList({
 
                   <div className="space-y-2">
                     {slotData.members.map((m) => (
-                      <div key={m.id} className="flex items-center justify-between bg-arena-dark/40 p-2 rounded-lg border border-arena-border/30">
+                      <div
+                        key={m.id}
+                        className="flex items-center justify-between p-2 rounded-lg border border-arena-border/30"
+                        style={
+                          m.user?.cardBannerUrl
+                            ? {
+                                backgroundImage: `linear-gradient(90deg, rgba(10, 10, 15, 0.93) 0%, rgba(10, 10, 15, 0.75) 100%), url(${m.user.cardBannerUrl})`,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                              }
+                            : { backgroundColor: 'rgba(10, 10, 15, 0.4)' }
+                        }
+                      >
                         <Link href={`/profile/${m.user?.id || ''}`} className="flex items-center gap-2.5 group min-w-0">
                           <div className="w-7 h-7 rounded-full border border-arena-border/50 overflow-hidden relative shrink-0">
                             {m.user?.avatarUrl ? (
@@ -322,6 +358,15 @@ export default function ParticipantsList({
                   ? 'border-neon-gold bg-neon-gold/10 shadow-neon-gold/10'
                   : 'border-arena-border bg-arena-card/40'
               }`}
+              style={
+                p.user?.cardBannerUrl
+                  ? {
+                      backgroundImage: `linear-gradient(90deg, rgba(20, 20, 30, 0.93) 0%, rgba(20, 20, 30, 0.75) 100%), url(${p.user.cardBannerUrl})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                    }
+                  : undefined
+              }
             >
               {/* Left Side: Avatar, Username, Team */}
               <div className="flex items-center gap-3">

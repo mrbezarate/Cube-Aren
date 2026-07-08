@@ -100,6 +100,7 @@ export interface LeaderboardEntry {
     username: string;
     displayName?: string;
     avatarUrl?: string;
+    cardBannerUrl?: string;
     gender?: Gender;
   };
   score: number;
@@ -155,6 +156,8 @@ export interface Team {
   tag?: string;
   description?: string;
   logoUrl?: string;
+  bannerUrl?: string;
+  flag?: string;
   captainId: string;
   captainName?: string | null;
   game: GameType;
@@ -356,4 +359,56 @@ export interface BlockedUser {
   };
   reason?: string;
   blockedAt: string;
+}
+
+export type CommunityTag =
+  | 'discussion'
+  | 'lfg'
+  | 'guide'
+  | 'news'
+  | 'question'
+  | 'meta';
+
+export interface CommunityPost {
+  id: string;
+  game: GameType;
+  title: string;
+  content: string;
+  tag: CommunityTag;
+  likesCount: number;
+  commentsCount: number;
+  viewsCount: number;
+  isPinned: boolean;
+  isLocked: boolean;
+  isLiked?: boolean;
+  author: {
+    id: string;
+    username: string;
+    displayName?: string;
+    avatarUrl?: string;
+    gender?: Gender;
+    mainGame?: GameType;
+    level: number;
+  } | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CommunityComment {
+  id: string;
+  postId: string;
+  parentId: string | null;
+  content: string;
+  likesCount: number;
+  isLiked?: boolean;
+  author: {
+    id: string;
+    username: string;
+    displayName?: string;
+    avatarUrl?: string;
+    gender?: Gender;
+    mainGame?: GameType;
+    level: number;
+  } | null;
+  createdAt: string;
 }

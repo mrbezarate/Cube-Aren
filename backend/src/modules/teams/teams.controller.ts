@@ -8,7 +8,13 @@ import {
   Param,
   Query,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { TeamsService } from './teams.service';
 import { CreateTeamDto } from './dto/create-team.dto';
@@ -76,9 +82,10 @@ export class TeamsController {
   }
 
   @Get(':id')
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Get team details' })
-  getTeam(@Param('id') id: string) {
-    return this.teamsService.getTeam(id);
+  getTeam(@Param('id') id: string, @CurrentUser('id') userId?: string) {
+    return this.teamsService.getTeam(id, userId);
   }
 
   @Put(':id')
@@ -124,13 +131,13 @@ export class TeamsController {
   @Delete(':id/members/:userId')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Kick a member (captain only)' })
+  @ApiOperation({ summary: 'Kick a member (captain or vice captain)' })
   kickMember(
     @Param('id') id: string,
     @Param('userId') targetUserId: string,
-    @CurrentUser('id') captainId: string,
+    @CurrentUser('id') kickerId: string,
   ) {
-    return this.teamsService.kickMember(id, captainId, targetUserId);
+    return this.teamsService.kickMember(id, kickerId, targetUserId);
   }
 
   @Post(':id/requests/:requestId/approve')
@@ -155,5 +162,92 @@ export class TeamsController {
     @CurrentUser('id') captainId: string,
   ) {
     return this.teamsService.rejectJoinRequest(id, requestId, captainId);
+  }
+
+  @Put(':id/members/:userId/role')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update a member role (captain only)' })
+  updateMemberRole(
+    @Param('id') teamId: string,
+    @Param('userId') targetUserId: string,
+    @CurrentUser('id') captainId: string,
+    @Body('role') role: string,
+  ) {
+    return this.teamsService.updateMemberRole(teamId, captainId, targetUserId, role);
+  }
+
+  @Post(':id/logo')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @UseInterceptors(FileInterceptor('file', {
+    storage: diskStorage({
+      destination: './uploads/team-logos',
+      filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+        const ext = extname(file.originalname);
+        cb(null, `${uniqueSuffix}${ext}`);
+      },
+    }),
+    fileFilter: (req, file, cb) => {
+      const allowedMimeTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif'];
+      if (allowedMimeTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new BadRequestException('Разрешены только файлы изображений формата PNG, JPEG, JPG или GIF'), false);
+      }
+    },
+    limits: {
+      fileSize: 5 * 1024 * 1024, // 5MB
+    },
+  }))
+  @ApiOperation({ summary: 'Upload team logo (captain/mods only)' })
+  async uploadLogo(
+    @Param('id') teamId: string,
+    @CurrentUser('id') userId: string,
+    @UploadedFile() file: any,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Файл не предоставлен');
+    }
+    const logoUrl = `/api/uploads/team-logos/${file.filename}`;
+    return this.teamsService.updateTeamLogo(teamId, userId, logoUrl);
+  }
+
+  @Post(':id/banner')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @UseInterceptors(FileInterceptor('file', {
+    storage: diskStorage({
+      destination: './uploads/team-banners',
+      filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+        const ext = extname(file.originalname);
+        cb(null, `${uniqueSuffix}${ext}`);
+      },
+    }),
+    fileFilter: (req, file, cb) => {
+      const allowedMimeTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif'];
+      if (allowedMimeTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new BadRequestException('Разрешены только файлы изображений формата PNG, JPEG, JPG или GIF'), false);
+      }
+    },
+    limits: {
+      fileSize: 5 * 1024 * 1024, // 5MB
+    },
+  }))
+  @ApiOperation({ summary: 'Upload team banner (captain/mods only)' })
+  async uploadBanner(
+    @Param('id') teamId: string,
+    @CurrentUser('id') userId: string,
+    @UploadedFile() file: any,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Файл не предоставлен');
+    }
+    const bannerUrl = `/api/uploads/team-banners/${file.filename}`;
+    return this.teamsService.updateTeamBanner(teamId, userId, bannerUrl);
   }
 }

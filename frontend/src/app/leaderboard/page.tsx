@@ -17,6 +17,18 @@ const GAMES: { id: GameType; name: string; icon: string }[] = [
   { id: 'apex', name: 'Apex Legends', icon: '🚀' },
 ];
 
+const GAME_NAMES: Record<string, string> = {
+  cs2: 'CS2',
+  dota2: 'Dota 2',
+  valorant: 'Valorant',
+  lol: 'LoL',
+  pubg: 'PUBG',
+  apex: 'Apex',
+  custom: 'Другие',
+};
+
+const getGameName = (game: GameType) => GAME_NAMES[game] || game;
+
 export default function LeaderboardPage() {
   const [mode, setMode] = useState<'players' | 'teams'>('players');
   const [selectedGame, setSelectedGame] = useState<GameType>('cs2');
@@ -64,7 +76,7 @@ export default function LeaderboardPage() {
   const activeLeaderboard = mode === 'players' ? playersLeaderboard : teamsLeaderboard;
 
   return (
-    <div className="min-h-screen bg-arena-dark py-8">
+    <div className="min-h-screen bg-bg-primary py-8">
       <div className="max-w-6xl mx-auto px-4">
         {/* Header */}
         <div className="mb-8 text-center">
@@ -84,10 +96,10 @@ export default function LeaderboardPage() {
               setMode('players');
               setPage(1);
             }}
-            className={`rounded-lg px-5 py-2.5 font-orbitron text-sm font-semibold transition-all ${
+            className={`rounded-lg px-5 py-2.5 font-orbitron text-sm font-semibold transition-all border ${
               mode === 'players'
-                ? 'bg-neon-purple text-white border border-neon-purple'
-                : 'bg-arena-card text-gray-400 border border-arena-border hover:border-neon-purple/40'
+                ? 'bg-accent-primary text-white border-accent-primary shadow-lg shadow-accent-primary/20'
+                : 'bg-bg-secondary text-gray-400 border-border-subtle hover:border-accent-primary/40'
             }`}
           >
             Игроки
@@ -97,10 +109,10 @@ export default function LeaderboardPage() {
               setMode('teams');
               setPage(1);
             }}
-            className={`rounded-lg px-5 py-2.5 font-orbitron text-sm font-semibold transition-all ${
+            className={`rounded-lg px-5 py-2.5 font-orbitron text-sm font-semibold transition-all border ${
               mode === 'teams'
-                ? 'bg-neon-blue text-white border border-neon-blue'
-                : 'bg-arena-card text-gray-400 border border-arena-border hover:border-neon-blue/40'
+                ? 'bg-accent-secondary text-white border-accent-secondary shadow-lg shadow-accent-secondary/20'
+                : 'bg-bg-secondary text-gray-400 border-border-subtle hover:border-accent-secondary/40'
             }`}
           >
             Команды
@@ -118,11 +130,11 @@ export default function LeaderboardPage() {
               }}
               className={`
                 px-4 py-2 rounded-lg font-orbitron font-semibold text-sm
-                transition-all flex items-center gap-2
+                transition-all flex items-center gap-2 border
                 ${
                   selectedGame === game.id
-                    ? 'bg-neon-purple text-white border-2 border-neon-purple shadow-lg shadow-neon-purple/20'
-                    : 'bg-arena-card text-gray-400 border border-arena-border hover:border-neon-purple/50'
+                    ? 'bg-accent-primary text-white border-accent-primary shadow-lg shadow-accent-primary/20'
+                    : 'bg-bg-secondary text-gray-400 border-border-subtle hover:border-accent-primary/50'
                 }
               `}
             >
@@ -133,7 +145,7 @@ export default function LeaderboardPage() {
         </div>
 
         {/* Leaderboard Table */}
-        <div className="bg-arena-card border border-arena-border rounded-xl overflow-hidden">
+        <div className="bg-bg-secondary border border-border-subtle rounded-xl overflow-hidden shadow-xl">
           {loading ? (
             <div className="text-center py-12 text-gray-400">Загрузка...</div>
           ) : !activeLeaderboard || activeLeaderboard.data.length === 0 ? (
@@ -142,7 +154,7 @@ export default function LeaderboardPage() {
             <>
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-arena-dark border-b border-arena-border">
+                  <thead className="bg-bg-primary border-b border-border-subtle">
                     <tr>
                       <th className="px-6 py-4 text-left text-xs font-orbitron font-bold text-gray-400 uppercase tracking-wider">
                         Ранг
@@ -170,12 +182,21 @@ export default function LeaderboardPage() {
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-arena-border">
+                  <tbody className="divide-y divide-border-subtle">
                     {mode === 'players'
                       ? playersLeaderboard?.data.map((entry) => (
                           <tr
                             key={entry.user.id}
                             className="hover:bg-white/5 transition-colors"
+                            style={
+                              entry.user.cardBannerUrl
+                                ? {
+                                    backgroundImage: `linear-gradient(90deg, rgba(17, 17, 25, 0.95) 0%, rgba(17, 17, 25, 0.8) 50%, rgba(17, 17, 25, 0.95) 100%), url(${entry.user.cardBannerUrl})`,
+                                    backgroundSize: 'cover',
+                                    backgroundPosition: 'center',
+                                  }
+                                : undefined
+                            }
                           >
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="flex items-center gap-2">
@@ -188,12 +209,12 @@ export default function LeaderboardPage() {
                             <td className="px-6 py-4 whitespace-nowrap">
                               <Link
                                 href={`/profile/${entry.user.id}`}
-                                className="flex items-center gap-3 hover:text-neon-purple transition-colors group"
+                                className="flex items-center gap-3 hover:text-accent-primary transition-colors group"
                               >
                                 <img
                                   src={entry.user.avatarUrl || '/default-avatar.svg'}
                                   alt={entry.user.username}
-                                  className="w-10 h-10 rounded-lg object-cover border border-arena-border group-hover:border-neon-purple transition-colors"
+                                  className="w-10 h-10 rounded-lg object-cover border border-border-subtle group-hover:border-accent-primary transition-colors"
                                 />
                                 <div className="flex items-center gap-2">
                                   <span className="font-orbitron font-semibold text-white">
@@ -204,12 +225,12 @@ export default function LeaderboardPage() {
                               </Link>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
-                              <span className="font-orbitron font-bold text-neon-blue text-lg">
+                              <span className="font-orbitron font-bold text-accent-secondary text-lg">
                                 {entry.score}
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
-                              <span className="font-orbitron font-bold text-neon-purple text-lg">
+                              <span className="font-orbitron font-bold text-accent-primary text-lg">
                                 {Number(entry.rating).toFixed(0)}
                               </span>
                             </td>
@@ -220,14 +241,21 @@ export default function LeaderboardPage() {
                               <span className="font-semibold text-red-400">{entry.losses}</span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
-                              <span className="font-orbitron font-bold text-neon-gold">
+                              <span className="font-orbitron font-bold text-accent-warning">
                                 {entry.winRate}%
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
-                              <span className="text-sm text-gray-300">
-                                {entry.currentTeam?.name || 'Свободный агент'}
-                              </span>
+                              {entry.currentTeam ? (
+                                <Link
+                                  href={`/teams/${entry.currentTeam.id}`}
+                                  className="text-sm text-accent-secondary hover:underline font-semibold"
+                                >
+                                  {entry.currentTeam.name}
+                                </Link>
+                              ) : (
+                                <span className="text-sm text-gray-500">Свободный агент</span>
+                              )}
                             </td>
                           </tr>
                         ))
@@ -245,27 +273,30 @@ export default function LeaderboardPage() {
                               </div>
                             </td>
                             <td className="px-6 py-4">
-                              <div className="flex items-center gap-3">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-arena-border bg-neon-blue/10">
-                                  <Shield className="h-5 w-5 text-neon-blue" />
+                              <Link
+                                href={`/teams/${entry.team.id}`}
+                                className="flex items-center gap-3 hover:text-accent-secondary transition-colors group"
+                              >
+                                <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border-subtle bg-accent-secondary/10 group-hover:border-accent-secondary transition-colors">
+                                  <Shield className="h-5 w-5 text-accent-secondary" />
                                 </div>
                                 <div>
-                                  <div className="font-orbitron font-semibold text-white">
-                                    {entry.team.name} {entry.team.tag ? <span className="text-neon-blue">[{entry.team.tag}]</span> : null}
+                                  <div className="font-orbitron font-semibold text-white group-hover:text-accent-secondary transition-colors">
+                                    {entry.team.name} {entry.team.tag ? <span className="text-accent-secondary">[{entry.team.tag}]</span> : null}
                                   </div>
                                   <div className="text-xs text-gray-500">
-                                    {(entry.team.supportedGames || [selectedGame]).join(' · ')}
+                                    {(entry.team.supportedGames || [selectedGame]).map(getGameName).join(' · ')}
                                   </div>
                                 </div>
-                              </div>
+                              </Link>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
-                              <span className="font-orbitron font-bold text-neon-blue text-lg">
+                              <span className="font-orbitron font-bold text-accent-secondary text-lg">
                                 {Number(entry.rating).toFixed(0)}
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
-                              <span className="font-orbitron font-bold text-neon-purple text-lg">
+                              <span className="font-orbitron font-bold text-accent-primary text-lg">
                                 {Number(entry.rating).toFixed(0)}
                               </span>
                             </td>
@@ -276,7 +307,7 @@ export default function LeaderboardPage() {
                               <span className="font-semibold text-red-400">{entry.losses}</span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
-                              <span className="font-orbitron font-bold text-neon-gold">
+                              <span className="font-orbitron font-bold text-accent-warning">
                                 {entry.winRate}%
                               </span>
                             </td>
@@ -284,7 +315,7 @@ export default function LeaderboardPage() {
                               {entry.team.captainId ? (
                                 <Link
                                   href={`/profile/${entry.team.captainId}`}
-                                  className="text-sm text-gray-300 hover:text-neon-blue transition-colors font-semibold"
+                                  className="text-sm text-gray-300 hover:text-accent-secondary transition-colors font-semibold"
                                 >
                                   {entry.team.captainName || 'Не указан'}
                                 </Link>
@@ -300,11 +331,11 @@ export default function LeaderboardPage() {
 
               {/* Pagination */}
               {activeLeaderboard.totalPages > 1 && (
-                <div className="px-6 py-4 border-t border-arena-border flex items-center justify-between">
+                <div className="px-6 py-4 border-t border-border-subtle flex items-center justify-between">
                   <button
                     onClick={() => setPage(p => Math.max(1, p - 1))}
                     disabled={page === 1}
-                    className="px-4 py-2 rounded-lg bg-arena-dark text-white font-orbitron font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neon-purple/20 transition-colors"
+                    className="px-4 py-2 rounded-lg bg-bg-primary text-white font-orbitron font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-accent-primary/20 transition-colors"
                   >
                     Назад
                   </button>
@@ -314,7 +345,7 @@ export default function LeaderboardPage() {
                   <button
                     onClick={() => setPage(p => Math.min(activeLeaderboard.totalPages, p + 1))}
                     disabled={page === activeLeaderboard.totalPages}
-                    className="px-4 py-2 rounded-lg bg-arena-dark text-white font-orbitron font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neon-purple/20 transition-colors"
+                    className="px-4 py-2 rounded-lg bg-bg-primary text-white font-orbitron font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-accent-primary/20 transition-colors"
                   >
                     Вперёд
                   </button>

@@ -5,6 +5,13 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get('token')?.value;
   const path = request.nextUrl.pathname;
 
+  // If already authenticated and trying to access login/register, redirect to tournaments page
+  const authRoutes = ['/auth/login', '/auth/register'];
+  if (token && authRoutes.some((route) => path.startsWith(route))) {
+    const tournamentsUrl = new URL('/tournaments', request.url);
+    return NextResponse.redirect(tournamentsUrl);
+  }
+
   // Routes that require authentication
   const protectedRoutes = [
     '/dashboard',

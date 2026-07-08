@@ -622,6 +622,7 @@ export class UsersService {
           username: s.user.username,
           displayName: s.user.displayName,
           avatarUrl: s.user.avatarUrl,
+          cardBannerUrl: s.user.cardBannerUrl,
           gender: s.user.gender,
         },
         score: this.calculateStreetScore(s),

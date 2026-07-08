@@ -29,15 +29,7 @@ export class TeamsService {
     private usersRepo: Repository<User>,
   ) {}
 
-  private normalizeGames(primaryGame: GameType, supportedGames?: GameType[]) {
-    const uniqueGames = Array.from(new Set([primaryGame, ...(supportedGames || [])]));
-
-    if (uniqueGames.length > 3) {
-      throw new BadRequestException('Один клан может поддерживать максимум 3 игры');
-    }
-
-    return uniqueGames;
-  }
+  // REMOVED: normalizeGames was dead code after createTeam refactor
 
   private getTeamGames(team: Team): GameType[] {
     return Array.from(new Set([team.game, ...(team.supportedGames || [])]));
@@ -107,12 +99,26 @@ export class TeamsService {
       throw new ConflictException('Команда с таким названием уже существует');
     }
 
-    const supportedGames = this.normalizeGames(dto.game, dto.supportedGames);
+    // Validate supported games — required, 1-3 unique values
+    if (!dto.supportedGames || dto.supportedGames.length === 0) {
+      throw new BadRequestException('Выберите хотя бы одну игру для клана');
+    }
+    const uniqueGames = Array.from(new Set(dto.supportedGames));
+    if (uniqueGames.length > 3) {
+      throw new BadRequestException('Максимум 3 игры для клана');
+    }
+    const primaryGame = uniqueGames[0]; // First selected game is always primary
 
+    // Build a temporary team object for the conflict check BEFORE saving
+    const tempTeam = { game: primaryGame, supportedGames: uniqueGames } as Team;
+    await this.ensureNoGameConflict(captainId, tempTeam);
+
+    // All checks passed — now persist and charge credits
     const team = this.teamsRepo.create({
       ...dto,
+      game: primaryGame,
       captainId,
-      supportedGames,
+      supportedGames: uniqueGames,
       membersCount: 1,
     });
     await this.teamsRepo.save(team);
@@ -129,7 +135,7 @@ export class TeamsService {
     return this.teamsRepo.findOne({ where: { id: team.id }, relations: ['captain'] });
   }
 
-  async getTeam(teamId: string) {
+  async getTeam(teamId: string, viewerId?: string) {
     const team = await this.teamsRepo.findOne({
       where: { id: teamId },
       relations: ['captain'],
@@ -150,12 +156,14 @@ export class TeamsService {
     });
 
     return {
-      ...(await this.formatTeam(team)),
+      ...(await this.formatTeam(team, viewerId)),
       members: members.map(m => ({
         id: m.id,
         userId: m.user.id,
         username: m.user.username,
+        displayName: m.user.displayName,
         avatarUrl: m.user.avatarUrl,
+        cardBannerUrl: m.user.cardBannerUrl,
         gender: m.user.gender,
         role: m.role,
         joinedAt: m.joinedAt,
@@ -176,12 +184,26 @@ export class TeamsService {
     const team = await this.teamsRepo.findOne({ where: { id: teamId } });
     if (!team) throw new NotFoundException('Команда не найдена');
 
-    // Only captain can update
-    if (team.captainId !== userId) {
-      throw new ForbiddenException('Только капитан может изменять команду');
+    // Only captain or vice_captain can update settings
+    const requester = await this.teamMembersRepo.findOne({ where: { teamId, userId } });
+    const isAllowed = team.captainId === userId ||
+      (requester && (requester.role === TeamRole.VICE_CAPTAIN));
+    if (!isAllowed) {
+      throw new ForbiddenException('Только капитан или заместитель может изменять команду');
     }
 
-    await this.teamsRepo.update(teamId, dto);
+    const updates: Partial<Team> = { ...dto } as any;
+    // If supportedGames changed, re-derive primary game
+    if (dto.supportedGames && dto.supportedGames.length > 0) {
+      const uniqueGames = Array.from(new Set(dto.supportedGames)) as GameType[];
+      if (uniqueGames.length > 3) {
+        throw new BadRequestException('Максимум 3 игры для клана');
+      }
+      updates.supportedGames = uniqueGames;
+      updates.game = uniqueGames[0]; // Recalculate primary game
+    }
+
+    await this.teamsRepo.update(teamId, updates);
     return this.teamsRepo.findOne({ where: { id: teamId } });
   }
 
@@ -269,27 +291,32 @@ export class TeamsService {
     return { message: 'Вы покинули команду' };
   }
 
-  async kickMember(teamId: string, captainId: string, targetUserId: string) {
+  async kickMember(teamId: string, kickerId: string, targetUserId: string) {
     const team = await this.teamsRepo.findOne({ where: { id: teamId } });
     if (!team) throw new NotFoundException('Команда не найдена');
 
-    if (team.captainId !== captainId) {
-      throw new ForbiddenException('Только капитан может исключать игроков');
+    const kicker = await this.teamMembersRepo.findOne({ where: { teamId, userId: kickerId } });
+    const isCaptain = team.captainId === kickerId;
+    const isViceCaptain = kicker?.role === TeamRole.VICE_CAPTAIN;
+
+    // Only captain or vice_captain may kick
+    if (!isCaptain && !isViceCaptain) {
+      throw new ForbiddenException('Только капитан или заместитель может исключать игроков');
     }
 
-    if (targetUserId === captainId) {
-      throw new BadRequestException('Капитан не может исключить себя');
+    if (targetUserId === kickerId) {
+      throw new BadRequestException('Нельзя исключить самого себя');
     }
 
-    const member = await this.teamMembersRepo.findOne({
-      where: { teamId, userId: targetUserId },
-    });
+    const target = await this.teamMembersRepo.findOne({ where: { teamId, userId: targetUserId } });
+    if (!target) throw new NotFoundException('Игрок не найден в команде');
 
-    if (!member) {
-      throw new NotFoundException('Игрок не найден в команде');
+    // Vice captain cannot kick captain or other vice captains
+    if (isViceCaptain && (target.userId === team.captainId || target.role === TeamRole.VICE_CAPTAIN)) {
+      throw new ForbiddenException('Заместитель не может исключить капитана или другого заместителя');
     }
 
-    await this.teamMembersRepo.remove(member);
+    await this.teamMembersRepo.remove(target);
     await this.teamsRepo.decrement({ id: teamId }, 'membersCount', 1);
 
     return { message: 'Игрок исключён из команды' };
@@ -329,12 +356,15 @@ export class TeamsService {
     }));
   }
 
-  async approveJoinRequest(teamId: string, requestId: string, captainId: string) {
+  async approveJoinRequest(teamId: string, requestId: string, moderatorId: string) {
     const team = await this.teamsRepo.findOne({ where: { id: teamId } });
     if (!team) throw new NotFoundException('Команда не найдена');
 
-    if (team.captainId !== captainId) {
-      throw new ForbiddenException('Только админ клана может принимать заявки');
+    const moderator = await this.teamMembersRepo.findOne({ where: { teamId, userId: moderatorId } });
+    const canModerate = team.captainId === moderatorId ||
+      (moderator && (moderator.role === TeamRole.VICE_CAPTAIN || moderator.role === TeamRole.MODERATOR));
+    if (!canModerate) {
+      throw new ForbiddenException('Только капитан, заместитель или модератор может принимать заявки');
     }
 
     if (team.membersCount >= team.maxMembers) {
@@ -372,12 +402,15 @@ export class TeamsService {
     return { message: 'Заявка одобрена' };
   }
 
-  async rejectJoinRequest(teamId: string, requestId: string, captainId: string) {
+  async rejectJoinRequest(teamId: string, requestId: string, moderatorId: string) {
     const team = await this.teamsRepo.findOne({ where: { id: teamId } });
     if (!team) throw new NotFoundException('Команда не найдена');
 
-    if (team.captainId !== captainId) {
-      throw new ForbiddenException('Только админ клана может отклонять заявки');
+    const moderator = await this.teamMembersRepo.findOne({ where: { teamId, userId: moderatorId } });
+    const canModerate = team.captainId === moderatorId ||
+      (moderator && (moderator.role === TeamRole.VICE_CAPTAIN || moderator.role === TeamRole.MODERATOR));
+    if (!canModerate) {
+      throw new ForbiddenException('Только капитан, заместитель или модератор может отклонять заявки');
     }
 
     const request = await this.teamJoinRequestsRepo.findOne({
@@ -454,7 +487,9 @@ export class TeamsService {
   }
 
   async getAllTeams(viewerId?: string, game?: GameType, page: number = 1, limit: number = 20) {
-    const skip = (page - 1) * limit;
+    const p = Math.max(1, Number(page) || 1);
+    const l = Math.min(500, Math.max(1, Number(limit) || 20));
+    const skip = (p - 1) * l;
     const teams = await this.teamsRepo.find({
       order: { rating: 'DESC', createdAt: 'DESC' },
       relations: ['captain'],
@@ -463,13 +498,91 @@ export class TeamsService {
     const filteredTeams = game
       ? teams.filter((team) => this.getTeamGames(team).includes(game))
       : teams;
-    const pageTeams = filteredTeams.slice(skip, skip + limit);
+    const pageTeams = filteredTeams.slice(skip, skip + l);
 
     return {
       data: await Promise.all(pageTeams.map((team) => this.formatTeam(team, viewerId))),
       total: filteredTeams.length,
-      page,
-      totalPages: Math.ceil(filteredTeams.length / limit),
+      page: p,
+      totalPages: Math.ceil(filteredTeams.length / l),
     };
+  }
+
+  async updateMemberRole(teamId: string, captainId: string, targetUserId: string, newRole: string) {
+    const team = await this.teamsRepo.findOne({ where: { id: teamId } });
+    if (!team) throw new NotFoundException('Команда не найдена');
+
+    if (team.captainId !== captainId) {
+      throw new ForbiddenException('Только капитан может изменять роли');
+    }
+
+    if (targetUserId === captainId) {
+      throw new BadRequestException('Капитан не может изменить свою собственную роль');
+    }
+
+    const member = await this.teamMembersRepo.findOne({
+      where: { teamId, userId: targetUserId },
+    });
+    if (!member) throw new NotFoundException('Участник не найден в команде');
+
+    if (newRole === 'captain') {
+      // Transfer captaincy: old captain becomes Vice Captain (not plain member)
+      const currentCaptainMember = await this.teamMembersRepo.findOne({
+        where: { teamId, userId: captainId },
+      });
+      if (currentCaptainMember) {
+        currentCaptainMember.role = TeamRole.VICE_CAPTAIN;
+        await this.teamMembersRepo.save(currentCaptainMember);
+      }
+
+      team.captainId = targetUserId;
+      await this.teamsRepo.save(team);
+
+      member.role = TeamRole.CAPTAIN;
+      await this.teamMembersRepo.save(member);
+
+      return { message: 'Капитанство успешно передано' };
+    }
+
+    if (!Object.values(TeamRole).includes(newRole as any)) {
+      throw new BadRequestException('Неверная роль');
+    }
+
+    member.role = newRole as TeamRole;
+    await this.teamMembersRepo.save(member);
+
+    return { message: `Роль успешно изменена на ${newRole}` };
+  }
+
+  async updateTeamLogo(teamId: string, userId: string, logoUrl: string) {
+    const team = await this.teamsRepo.findOne({ where: { id: teamId } });
+    if (!team) throw new NotFoundException('Команда не найдена');
+
+    const member = await this.teamMembersRepo.findOne({ where: { teamId, userId } });
+    const isAllowed = team.captainId === userId || 
+      (member && (member.role === 'vice_captain' || member.role === 'moderator'));
+    
+    if (!isAllowed) {
+      throw new ForbiddenException('Недостаточно прав для изменения логотипа');
+    }
+
+    await this.teamsRepo.update(teamId, { logoUrl });
+    return { logoUrl };
+  }
+
+  async updateTeamBanner(teamId: string, userId: string, bannerUrl: string) {
+    const team = await this.teamsRepo.findOne({ where: { id: teamId } });
+    if (!team) throw new NotFoundException('Команда не найдена');
+
+    const member = await this.teamMembersRepo.findOne({ where: { teamId, userId } });
+    const isAllowed = team.captainId === userId || 
+      (member && (member.role === 'vice_captain' || member.role === 'moderator'));
+    
+    if (!isAllowed) {
+      throw new ForbiddenException('Недостаточно прав для изменения баннера');
+    }
+
+    await this.teamsRepo.update(teamId, { bannerUrl });
+    return { bannerUrl };
   }
 }

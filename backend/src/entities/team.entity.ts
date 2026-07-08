@@ -27,6 +27,12 @@ export class Team {
   @Column({ nullable: true })
   logoUrl: string;
 
+  @Column({ name: 'banner_url', nullable: true })
+  bannerUrl: string; // Кастомный баннер команды
+
+  @Column({ nullable: true })
+  flag: string; // Флаг/эмодзи страны или фракции клана
+
   @Column({ name: 'captain_id', type: 'uuid' })
   captainId: string; // Создатель и капитан команды
 

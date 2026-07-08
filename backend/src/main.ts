@@ -30,6 +30,14 @@ async function bootstrap() {
   if (!existsSync(bannersDir)) {
     mkdirSync(bannersDir, { recursive: true });
   }
+  const logosDir = join(uploadsDir, 'team-logos');
+  if (!existsSync(logosDir)) {
+    mkdirSync(logosDir, { recursive: true });
+  }
+  const teamBannersDir = join(uploadsDir, 'team-banners');
+  if (!existsSync(teamBannersDir)) {
+    mkdirSync(teamBannersDir, { recursive: true });
+  }
   app.use('/api/uploads', express.static(uploadsDir));
 
   // Global validation pipe

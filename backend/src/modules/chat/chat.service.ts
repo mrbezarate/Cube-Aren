@@ -136,6 +136,7 @@ export class ChatService {
             username: companion.username,
             displayName: companion.displayName,
             avatarUrl: companion.avatarUrl,
+            cardBannerUrl: companion.cardBannerUrl,
           },
           lastMessage: room.lastMessage,
           lastMessageAt: room.lastMessageAt,

@@ -8,6 +8,7 @@ import { Participant, OddsData } from '@/types';
 import Button from '../ui/Button';
 import { Coins, Swords, Target, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useRouter } from 'next/navigation';
 
 interface BettingPanelProps {
   tournamentId: string;
@@ -38,6 +39,7 @@ export default function BettingPanel({
   teamsCount,
 }: BettingPanelProps) {
   const { user, refreshUser } = useAuthStore();
+  const router = useRouter();
   const [amount, setAmount] = useState<number>(100);
   const [loading, setLoading] = useState(false);
 
@@ -171,17 +173,26 @@ export default function BettingPanel({
                       }`}
                     >
                       <div className="flex items-center gap-2">
-                        {p.user?.avatarUrl ? (
-                          <img
-                            src={p.user.avatarUrl}
-                            alt={p.user.username}
-                            className="w-6 h-6 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-6 h-6 rounded-full bg-neon-purple/20 flex items-center justify-center text-[10px] font-bold text-neon-purple">
-                            {p.user?.username?.[0]?.toUpperCase() ?? '?'}
-                          </div>
-                        )}
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/profile/${p.user?.id || ''}`);
+                          }}
+                          className="cursor-pointer hover:opacity-80 transition-opacity"
+                          title="Профиль игрока"
+                        >
+                          {p.user?.avatarUrl ? (
+                            <img
+                              src={p.user.avatarUrl}
+                              alt={p.user.username}
+                              className="w-6 h-6 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-6 h-6 rounded-full bg-neon-purple/20 flex items-center justify-center text-[10px] font-bold text-neon-purple">
+                              {p.user?.username?.[0]?.toUpperCase() ?? '?'}
+                            </div>
+                          )}
+                        </div>
                         <span className="text-xs font-bold">{p.user?.username}</span>
                       </div>
                       <div className="text-right">
@@ -238,7 +249,35 @@ export default function BettingPanel({
                         {label}
                       </div>
                       <div className="text-[9px] text-gray-600">{members.length} игроков</div>
-                      <div className="font-orbitron text-sm font-bold text-neon-gold">
+                      
+                      {!isEmpty && (
+                        <div className="flex justify-center gap-1 mt-2.5 flex-wrap">
+                          {members.slice(0, 4).map((m) => (
+                            <div
+                              key={m.id}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/profile/${m.user?.id || ''}`);
+                              }}
+                              className="w-5 h-5 rounded-full overflow-hidden border border-white/20 hover:border-white transition-colors cursor-pointer shrink-0"
+                              title={m.user?.displayName || m.user?.username}
+                            >
+                              <img
+                                src={m.user?.avatarUrl || '/default-avatar.svg'}
+                                alt={m.user?.username || 'User'}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          ))}
+                          {members.length > 4 && (
+                            <span className="text-[8px] text-gray-500 self-center">
+                              +{members.length - 4}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="font-orbitron text-sm font-bold text-neon-gold pt-1">
                         ×{teamOddsValue}
                       </div>
                     </motion.button>
