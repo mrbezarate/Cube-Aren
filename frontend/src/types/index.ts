@@ -174,6 +174,59 @@ export interface Team {
   isCaptain?: boolean;
 }
 
+export type CommunityTag = 'discussion' | 'lfg' | 'guide' | 'news' | 'question' | 'meta';
+
+export interface CommunityAuthor {
+  id: string;
+  username: string;
+  displayName?: string;
+  avatarUrl?: string;
+  gender?: Gender;
+  mainGame?: GameType;
+  level?: number;
+}
+
+export interface CommunityPost {
+  id: string;
+  game: GameType;
+  title: string;
+  content: string;
+  tag: CommunityTag;
+  likesCount: number;
+  commentsCount: number;
+  viewsCount: number;
+  isPinned: boolean;
+  isLocked: boolean;
+  isLiked: boolean;
+  author: CommunityAuthor | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CommunityComment {
+  id: string;
+  postId: string;
+  parentId: string | null;
+  content: string;
+  likesCount: number;
+  isLiked: boolean;
+  author: CommunityAuthor | null;
+  createdAt: string;
+}
+
+export interface CommunityBoardStats {
+  game: GameType;
+  posts: number;
+  comments: number;
+}
+
+export interface CommunityPostsResponse {
+  data: CommunityPost[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
+
 export interface TeamJoinRequest {
   id: string;
   teamId: string;

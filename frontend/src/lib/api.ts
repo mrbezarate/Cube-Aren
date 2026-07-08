@@ -19,6 +19,11 @@ import {
   NotificationSettings,
   UserPreferences,
   BlockedUser,
+  CommunityPost,
+  CommunityComment,
+  CommunityBoardStats,
+  CommunityPostsResponse,
+  CommunityTag,
 } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/api';
@@ -232,6 +237,32 @@ export const api = {
     getIncoming: () => apiInstance.get<any[]>('/friends/incoming').then(r => r.data),
     getFriends: () => apiInstance.get<any[]>('/friends/list').then(r => r.data),
     getStatus: (userId: string) => apiInstance.get<{ status: string }>(`/friends/status/${userId}`).then(r => r.data),
+  },
+  community: {
+    getPosts: (params?: {
+      game?: GameType;
+      tag?: CommunityTag;
+      sort?: 'new' | 'top' | 'hot';
+      search?: string;
+      page?: number;
+      limit?: number;
+    }) => apiInstance.get<CommunityPostsResponse>('/community/posts', { params }).then((r) => r.data),
+    getBoards: () => apiInstance.get<CommunityBoardStats[]>('/community/boards').then((r) => r.data),
+    getPost: (id: string) => apiInstance.get<CommunityPost>(`/community/posts/${id}`).then((r) => r.data),
+    createPost: (data: { game: GameType; title: string; content: string; tag?: CommunityTag }) =>
+      apiInstance.post<CommunityPost>('/community/posts', data).then((r) => r.data),
+    deletePost: (id: string) =>
+      apiInstance.delete<{ message: string }>(`/community/posts/${id}`).then((r) => r.data),
+    togglePostLike: (id: string) =>
+      apiInstance.post<{ liked: boolean; likesCount: number }>(`/community/posts/${id}/like`).then((r) => r.data),
+    getComments: (postId: string) =>
+      apiInstance.get<CommunityComment[]>(`/community/posts/${postId}/comments`).then((r) => r.data),
+    createComment: (postId: string, data: { content: string; parentId?: string }) =>
+      apiInstance.post<CommunityComment>(`/community/posts/${postId}/comments`, data).then((r) => r.data),
+    deleteComment: (id: string) =>
+      apiInstance.delete<{ message: string }>(`/community/comments/${id}`).then((r) => r.data),
+    toggleCommentLike: (id: string) =>
+      apiInstance.post<{ liked: boolean; likesCount: number }>(`/community/comments/${id}/like`).then((r) => r.data),
   },
   chat: {
     getRooms: () => apiInstance.get<any[]>('/chat/rooms').then(r => r.data),

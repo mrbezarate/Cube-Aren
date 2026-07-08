@@ -38,6 +38,10 @@ import { NotificationSettings } from './entities/notification-settings.entity';
 import { UserPreferences } from './entities/user-preferences.entity';
 import { BlockedUser } from './entities/blocked-user.entity';
 import { Match } from './entities/match.entity';
+import { CommunityModule } from './modules/community/community.module';
+import { CommunityPost } from './entities/community-post.entity';
+import { CommunityComment } from './entities/community-comment.entity';
+import { CommunityPostLike, CommunityCommentLike } from './entities/community-like.entity';
 
 @Module({
   imports: [
@@ -59,7 +63,7 @@ import { Match } from './entities/match.entity';
         username: configService.get('DB_USER', 'arena_user'),
         password: configService.get('DB_PASSWORD', 'arena_secret_password'),
         database: configService.get('DB_NAME', 'underground_arena'),
-        entities: [User, Tournament, Participant, Bet, Transaction, OnboardingAnswer, SavedTournament, PlayerStats, Follow, Team, TeamMember, TeamJoinRequest, FriendRequest, Friendship, ChatRoom, Message, TournamentView, ProfileView, TournamentReport, PrivacySettings, NotificationSettings, UserPreferences, BlockedUser, Match],
+        entities: [User, Tournament, Participant, Bet, Transaction, OnboardingAnswer, SavedTournament, PlayerStats, Follow, Team, TeamMember, TeamJoinRequest, FriendRequest, Friendship, ChatRoom, Message, TournamentView, ProfileView, TournamentReport, PrivacySettings, NotificationSettings, UserPreferences, BlockedUser, Match, CommunityPost, CommunityComment, CommunityPostLike, CommunityCommentLike],
         synchronize: true,
         logging: configService.get('NODE_ENV') === 'development',
         ssl: false,
@@ -77,6 +81,7 @@ import { Match } from './entities/match.entity';
     ChatModule,
     SettingsModule,
     AccountModule,
+    CommunityModule,
   ],
   providers: [
     // Глобальный guard для rate limiting
