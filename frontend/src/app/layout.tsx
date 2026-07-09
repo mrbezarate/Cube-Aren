@@ -8,6 +8,7 @@ import Navbar from '@/components/ui/Navbar';
 import Sidebar from '@/components/ui/Sidebar';
 import BottomTabBar from '@/components/ui/BottomTabBar';
 import OnboardingModal from '@/components/onboarding/OnboardingModal';
+import { usePreferencesStore, applyPreferences } from '@/lib/store/preferences.store';
 import '@/app/globals.css';
 
 export default function RootLayout({
@@ -21,9 +22,40 @@ export default function RootLayout({
   const isOnboardingOpen = useOnboardingStore((state) => state.isOpen);
   const openOnboarding = useOnboardingStore((state) => state.open);
 
+  const initializePreferences = usePreferencesStore((state) => state.initializePreferences);
+  const loadPreferences = usePreferencesStore((state) => state.loadPreferences);
+  const preferences = usePreferencesStore((state) => state.preferences);
+
   useEffect(() => {
     initializeAuth();
   }, [initializeAuth]);
+
+  // Load preferences from localStorage synchronously
+  useEffect(() => {
+    initializePreferences();
+  }, [initializePreferences]);
+
+  // Load preferences from backend API if authenticated
+  useEffect(() => {
+    if (user) {
+      loadPreferences();
+    }
+  }, [user, loadPreferences]);
+
+  // Listen for system theme scheme updates when 'system' is selected
+  useEffect(() => {
+    if (typeof window === 'undefined' || preferences.theme !== 'system') return;
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSystemThemeChange = () => {
+      applyPreferences(preferences);
+    };
+
+    mediaQuery.addEventListener('change', handleSystemThemeChange);
+    return () => {
+      mediaQuery.removeEventListener('change', handleSystemThemeChange);
+    };
+  }, [preferences]);
 
   useEffect(() => {
     if (!isLoading && user && !user.onboardingCompleted && !isOnboardingOpen) {

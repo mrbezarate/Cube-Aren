@@ -3,7 +3,9 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/auth.store';
-import { api } from '@/lib/api';
+import { usePreferencesStore } from '@/lib/store/preferences.store';
+import { UserPreferences } from '@/types';
+import { useTranslation } from '@/lib/i18n';
 import { toast } from 'react-hot-toast';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
@@ -14,25 +16,6 @@ type Theme = 'dark' | 'light' | 'system';
 type ColorAccent = 'purple' | 'blue' | 'green' | 'gold';
 type TimeFormat = '24h' | '12h';
 type ImageQuality = 'high' | 'medium' | 'low';
-
-interface UserPreferences {
-  language: Language;
-  theme: Theme;
-  colorAccent: ColorAccent;
-  timezone: string;
-  dateFormat: string;
-  timeFormat: TimeFormat;
-  hideUninterestingTournaments: boolean;
-  showOnlyRegionalTournaments: boolean;
-  minPrizePoolFilter: number;
-  enableAnimations: boolean;
-  autoplayVideos: boolean;
-  preloadImages: boolean;
-  imageQuality: ImageQuality;
-  showAdultContent: boolean;
-  filterProfanity: boolean;
-  hideSpoilers: boolean;
-}
 
 const LANGUAGES = [
   { value: 'ru', label: 'Русский', flag: '🇷🇺' },
@@ -56,53 +39,41 @@ const COLOR_ACCENTS = [
 export default function PreferencesSettingsPage() {
   const router = useRouter();
   const { user } = useAuthStore();
+  const { t } = useTranslation();
+  const storePreferences = usePreferencesStore((state) => state.preferences);
+  const updatePreferences = usePreferencesStore((state) => state.updatePreferences);
+  const loadPreferencesStore = usePreferencesStore((state) => state.loadPreferences);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [preferences, setPreferences] = useState<UserPreferences>({
-    language: 'ru',
-    theme: 'dark',
-    colorAccent: 'purple',
-    timezone: 'UTC+3',
-    dateFormat: 'DD.MM.YYYY',
-    timeFormat: '24h',
-    hideUninterestingTournaments: false,
-    showOnlyRegionalTournaments: false,
-    minPrizePoolFilter: 0,
-    enableAnimations: true,
-    autoplayVideos: true,
-    preloadImages: true,
-    imageQuality: 'high',
-    showAdultContent: false,
-    filterProfanity: false,
-    hideSpoilers: true,
-  });
+  const [preferences, setPreferences] = useState<UserPreferences>(storePreferences);
 
   useEffect(() => {
     if (!user) {
       router.push('/auth/login');
       return;
     }
-    loadPreferences();
+    
+    const loadData = async () => {
+      setLoading(true);
+      await loadPreferencesStore();
+      setLoading(false);
+    };
+
+    loadData();
   }, [user]);
 
-  const loadPreferences = async () => {
-    try {
-      setLoading(true);
-      const data = await api.settings.getUserPreferences();
-      setPreferences(data);
-    } catch (error) {
-      console.error('Failed to load preferences:', error);
-      toast.error('Не удалось загрузить настройки');
-    } finally {
-      setLoading(false);
+  // Sync state with store on load
+  useEffect(() => {
+    if (storePreferences) {
+      setPreferences(storePreferences);
     }
-  };
+  }, [storePreferences]);
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await api.settings.updateUserPreferences(preferences);
+      await updatePreferences(preferences);
       toast.success('Предпочтения обновлены!');
     } catch (error) {
       console.error('Failed to update preferences:', error);
@@ -122,7 +93,7 @@ export default function PreferencesSettingsPage() {
   if (loading) {
     return (
       <Card className="p-6">
-        <div className="text-white text-center">Загрузка...</div>
+        <div className="text-white text-center">{t('loading')}</div>
       </Card>
     );
   }
@@ -131,7 +102,7 @@ export default function PreferencesSettingsPage() {
     <Card className="p-6">
       <h2 className="font-orbitron font-bold text-xl text-white mb-6 flex items-center gap-2">
         <SettingsIcon className="w-6 h-6 text-neon-purple" />
-        Предпочтения
+        {t('preferences')}
       </h2>
 
       <div className="space-y-8">
@@ -403,7 +374,7 @@ export default function PreferencesSettingsPage() {
             className="w-full py-3 flex items-center justify-center gap-2"
           >
             <Save className="w-5 h-5" />
-            Сохранить изменения
+            {t('save')}
           </Button>
         </div>
       </div>

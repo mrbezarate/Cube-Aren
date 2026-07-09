@@ -11,15 +11,17 @@ import NotificationDropdown from './NotificationDropdown';
 import ProfileDropdown from './ProfileDropdown';
 import { useSocket } from '@/lib/hooks/useSocket';
 import { useEffect } from 'react';
+import { useTranslation } from '@/lib/i18n';
 
 const PUBLIC_LINKS = [
-  { href: '/tournaments', label: 'Турниры', icon: Gamepad2 },
-  { href: '/community', label: 'Сообщество', icon: MessageSquare },
-  { href: '/leaderboard', label: 'Рейтинг', icon: BarChart3 },
+  { href: '/tournaments', translationKey: 'tournaments' as const, icon: Gamepad2 },
+  { href: '/community', translationKey: 'community' as const, icon: MessageSquare },
+  { href: '/leaderboard', translationKey: 'leaderboard' as const, icon: BarChart3 },
 ];
 
 export default function Navbar() {
   const pathname = usePathname();
+  const { t } = useTranslation();
   const { isAuthenticated, user, isLoading, setUser } = useAuthStore();
   const { socket } = useSocket();
 
@@ -71,7 +73,7 @@ export default function Navbar() {
                   )}
                 >
                   <Icon className="h-4 w-4" />
-                  {link.label}
+                  {t(link.translationKey)}
                 </Link>
               );
             })}
@@ -95,17 +97,17 @@ export default function Navbar() {
           ) : (
             <div className="hidden items-center gap-2 sm:flex">
               <Link href="/auth/login">
-                <Button variant="ghost" size="sm">Войти</Button>
+                <Button variant="ghost" size="sm">{t('login')}</Button>
               </Link>
               <Link href="/auth/register">
-                <Button variant="primary" size="sm">Регистрация</Button>
+                <Button variant="primary" size="sm">{t('register')}</Button>
               </Link>
             </div>
           )}
 
           {!isLoading && !isAuthenticated ? (
             <Link href="/auth/login" className="sm:hidden">
-              <Button variant="secondary" size="sm">Войти</Button>
+              <Button variant="secondary" size="sm">{t('login')}</Button>
             </Link>
           ) : null}
         </div>

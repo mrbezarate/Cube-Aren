@@ -1,5 +1,14 @@
 import type { Config } from "tailwindcss";
 
+const withOpacity = (variableName: string): any => {
+  return ({ opacityValue }: { opacityValue?: string }) => {
+    if (opacityValue !== undefined) {
+      return `rgba(var(${variableName}), ${opacityValue})`;
+    }
+    return `rgb(var(${variableName}))`;
+  };
+};
+
 const config: Config = {
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
@@ -9,38 +18,41 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Premium dark palette
+        // Premium dark palette mapped to dynamic CSS variables
         bg: {
-          primary: '#0c0c0f',
-          secondary: '#111114',
-          tertiary: '#1a1a1f',
-          elevated: '#22222a',
+          primary: withOpacity('--bg-primary-rgb'),
+          secondary: withOpacity('--bg-secondary-rgb'),
+          tertiary: withOpacity('--bg-tertiary-rgb'),
+          elevated: withOpacity('--bg-elevated-rgb'),
         },
         text: {
-          primary: '#f5f5f7',
-          secondary: '#a1a1aa',
-          tertiary: '#71717a',
-          muted: '#52525b',
+          primary: withOpacity('--text-primary-rgb'),
+          secondary: withOpacity('--text-secondary-rgb'),
+          tertiary: withOpacity('--text-tertiary-rgb'),
+          muted: withOpacity('--text-muted-rgb'),
         },
         accent: {
-          primary: '#6366f1',
-          'primary-hover': '#818cf8',
-          secondary: '#22d3ee',
+          primary: withOpacity('--accent-primary-rgb'),
+          'primary-hover': withOpacity('--accent-primary-hover-rgb'),
+          secondary: withOpacity('--accent-secondary-rgb'),
           success: '#10b981',
           warning: '#f59e0b',
           danger: '#ef4444',
         },
         border: {
-          subtle: 'rgba(255, 255, 255, 0.06)',
-          default: 'rgba(255, 255, 255, 0.1)',
-          strong: 'rgba(255, 255, 255, 0.15)',
+          subtle: 'var(--border-subtle)',
+          default: 'var(--border-default)',
+          strong: 'var(--border-strong)',
         },
         // Legacy aliases (for compatibility)
         arena: {
-          dark: "#0c0c0f",
-          card: "#111114",
-          border: "rgba(255, 255, 255, 0.1)",
+          dark: withOpacity('--bg-primary-rgb'),
+          card: withOpacity('--bg-secondary-rgb'),
+          border: 'var(--border-default)',
         },
+        // Dynamic Neon mappings to support active color accents
+        'neon-purple': withOpacity('--accent-primary-rgb'),
+        'neon-blue': withOpacity('--accent-secondary-rgb'),
       },
       fontFamily: {
         sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],

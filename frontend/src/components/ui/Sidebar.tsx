@@ -14,18 +14,20 @@ import {
   Users,
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/store/auth.store';
+import { useTranslation } from '@/lib/i18n';
 
 const NAV_ITEMS = [
-  { href: '/', label: 'Главная', icon: Home, exact: true },
-  { href: '/chat', label: 'Чат', icon: MessageSquare },
-  { href: '/friends', label: 'Друзья', icon: Users },
-  { href: '/teams', label: 'Мои команды', icon: Shield },
-  { href: '/saved', label: 'Сохраненное', icon: Bookmark },
-  { href: '/settings/profile', label: 'Настройки', icon: Settings, match: '/settings' },
+  { href: '/', translationKey: 'home' as const, icon: Home, exact: true },
+  { href: '/chat', translationKey: 'chat' as const, icon: MessageSquare },
+  { href: '/friends', translationKey: 'friends' as const, icon: Users },
+  { href: '/teams', translationKey: 'my_teams' as const, icon: Shield },
+  { href: '/saved', translationKey: 'saved' as const, icon: Bookmark },
+  { href: '/settings/profile', translationKey: 'settings' as const, icon: Settings, match: '/settings' },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { t } = useTranslation();
   const { isAuthenticated, isLoading, user } = useAuthStore();
 
   if (isLoading || !isAuthenticated || !user) {
@@ -54,10 +56,10 @@ export default function Sidebar() {
                     ? 'bg-bg-tertiary text-text-primary'
                     : 'text-text-secondary hover:bg-bg-tertiary hover:text-text-primary',
                 )}
-                title={item.label}
+                title={t(item.translationKey)}
               >
                 <Icon className="h-5 w-5 shrink-0" />
-                <span className="hidden truncate lg:block">{item.label}</span>
+                <span className="hidden truncate lg:block">{t(item.translationKey)}</span>
               </Link>
             );
           })}
@@ -68,10 +70,10 @@ export default function Sidebar() {
             <Link
               href="/create"
               className="flex items-center justify-center gap-2 rounded-lg bg-accent-primary px-3 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-primary-hover lg:justify-start"
-              title="Создать турнир"
+              title={t('create_tournament')}
             >
               <PlusCircle className="h-5 w-5 shrink-0" />
-              <span className="hidden lg:block">Создать турнир</span>
+              <span className="hidden lg:block">{t('create_tournament')}</span>
             </Link>
           </div>
         ) : null}

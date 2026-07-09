@@ -6,9 +6,11 @@ import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
 import { Home, LogIn, MessageSquare, Trophy, User, Users, Newspaper, BarChart3 } from 'lucide-react';
 import { useAuthStore } from '@/lib/store/auth.store';
+import { useTranslation } from '@/lib/i18n';
 
 export default function BottomTabBar() {
   const pathname = usePathname();
+  const { t } = useTranslation();
   const { isAuthenticated, isLoading, user } = useAuthStore();
 
   if (isLoading) {
@@ -17,18 +19,18 @@ export default function BottomTabBar() {
 
   const items = isAuthenticated && user
     ? [
-        { href: '/', label: 'Главная', icon: Home, exact: true },
-        { href: '/tournaments', label: 'Турниры', icon: Trophy },
-        { href: '/chat', label: 'Чат', icon: MessageSquare },
-        { href: '/friends', label: 'Друзья', icon: Users },
-        { href: `/profile/${user.id}`, label: 'Профиль', icon: User, match: '/profile' },
+        { href: '/', translationKey: 'home' as const, icon: Home, exact: true },
+        { href: '/tournaments', translationKey: 'tournaments' as const, icon: Trophy },
+        { href: '/chat', translationKey: 'chat' as const, icon: MessageSquare },
+        { href: '/friends', translationKey: 'friends' as const, icon: Users },
+        { href: `/profile/${user.id}`, translationKey: 'profile' as const, icon: User, match: '/profile' },
       ]
     : [
-        { href: '/', label: 'Главная', icon: Home, exact: true },
-        { href: '/tournaments', label: 'Турниры', icon: Trophy },
-        { href: '/community', label: 'Комьюнити', icon: Newspaper },
-        { href: '/leaderboard', label: 'Рейтинг', icon: BarChart3 },
-        { href: '/auth/login', label: 'Войти', icon: LogIn, match: '/auth' },
+        { href: '/', translationKey: 'home' as const, icon: Home, exact: true },
+        { href: '/tournaments', translationKey: 'tournaments' as const, icon: Trophy },
+        { href: '/community', translationKey: 'community' as const, icon: Newspaper },
+        { href: '/leaderboard', translationKey: 'leaderboard' as const, icon: BarChart3 },
+        { href: '/auth/login', translationKey: 'login' as const, icon: LogIn, match: '/auth' },
       ];
 
   return (
@@ -50,7 +52,7 @@ export default function BottomTabBar() {
               )}
             >
               <Icon className="h-5 w-5" />
-              <span className="max-w-full truncate">{item.label}</span>
+              <span className="max-w-full truncate">{t(item.translationKey)}</span>
             </Link>
           );
         })}
