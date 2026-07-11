@@ -18,22 +18,9 @@ type TimeFormat = '24h' | '12h';
 type ImageQuality = 'high' | 'medium' | 'low';
 
 const LANGUAGES = [
-  { value: 'ru', label: 'Русский', flag: '🇷🇺' },
-  { value: 'en', label: 'English', flag: '🇬🇧' },
-  { value: 'ua', label: 'Українська', flag: '🇺🇦' },
-];
-
-const THEMES = [
-  { value: 'dark', label: 'Тёмная', icon: '🌙' },
-  { value: 'light', label: 'Светлая', icon: '☀️' },
-  { value: 'system', label: 'Системная', icon: '💻' },
-];
-
-const COLOR_ACCENTS = [
-  { value: 'purple', label: 'Фиолетовый', color: '#a855f7' },
-  { value: 'blue', label: 'Синий', color: '#3b82f6' },
-  { value: 'green', label: 'Зелёный', color: '#10b981' },
-  { value: 'gold', label: 'Золотой', color: '#f59e0b' },
+  { value: 'ru', label: 'Русский', flag: 'RU' },
+  { value: 'en', label: 'English', flag: 'EN' },
+  { value: 'ua', label: 'Українська', flag: 'UA' },
 ];
 
 export default function PreferencesSettingsPage() {
@@ -47,6 +34,19 @@ export default function PreferencesSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [preferences, setPreferences] = useState<UserPreferences>(storePreferences);
+
+  const THEMES = [
+    { value: 'dark', label: t('pref_theme_dark'), icon: '🌙' },
+    { value: 'light', label: t('pref_theme_light'), icon: '☀️' },
+    { value: 'system', label: t('pref_theme_system'), icon: '💻' },
+  ];
+
+  const COLOR_ACCENTS = [
+    { value: 'purple', label: t('pref_color_purple'), color: '#a855f7' },
+    { value: 'blue', label: t('pref_color_blue'), color: '#3b82f6' },
+    { value: 'green', label: t('pref_color_green'), color: '#10b981' },
+    { value: 'gold', label: t('pref_color_gold'), color: '#f59e0b' },
+  ];
 
   useEffect(() => {
     if (!user) {
@@ -74,10 +74,10 @@ export default function PreferencesSettingsPage() {
     setSaving(true);
     try {
       await updatePreferences(preferences);
-      toast.success('Предпочтения обновлены!');
+      toast.success(t('saved_success'));
     } catch (error) {
       console.error('Failed to update preferences:', error);
-      toast.error('Ошибка сохранения');
+      toast.error(t('saved_error'));
     } finally {
       setSaving(false);
     }
@@ -110,12 +110,12 @@ export default function PreferencesSettingsPage() {
         <section>
           <h3 className="font-orbitron font-semibold text-white mb-4 flex items-center gap-2">
             <Globe className="w-5 h-5 text-neon-blue" />
-            Интерфейс
+            {t('pref_interface')}
           </h3>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-orbitron font-semibold text-gray-300 mb-3">
-                Язык
+                {t('pref_language')}
               </label>
               <div className="grid grid-cols-3 gap-3">
                 {LANGUAGES.map((lang) => (
@@ -131,7 +131,7 @@ export default function PreferencesSettingsPage() {
                       }
                     `}
                   >
-                    <div className="text-2xl mb-1">{lang.flag}</div>
+                    <div className="text-lg font-bold mb-1 text-neon-purple">{lang.flag}</div>
                     <div className="text-sm font-orbitron text-white">{lang.label}</div>
                   </button>
                 ))}
@@ -140,7 +140,7 @@ export default function PreferencesSettingsPage() {
 
             <div>
               <label className="block text-sm font-orbitron font-semibold text-gray-300 mb-3">
-                Тема
+                {t('pref_theme')}
               </label>
               <div className="grid grid-cols-3 gap-3">
                 {THEMES.map((theme) => (
@@ -165,7 +165,7 @@ export default function PreferencesSettingsPage() {
 
             <div>
               <label className="block text-sm font-orbitron font-semibold text-gray-300 mb-3">
-                Цветовой акцент
+                {t('pref_color_accent')}
               </label>
               <div className="grid grid-cols-4 gap-3">
                 {COLOR_ACCENTS.map((accent) => (
@@ -197,29 +197,29 @@ export default function PreferencesSettingsPage() {
         <section>
           <h3 className="font-orbitron font-semibold text-white mb-4 flex items-center gap-2">
             <Monitor className="w-5 h-5 text-neon-blue" />
-            Отображение
+            {t('pref_display')}
           </h3>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-orbitron font-semibold text-gray-300 mb-2">
-                Часовой пояс
+                {t('pref_timezone')}
               </label>
               <select
                 value={preferences.timezone}
                 onChange={(e) => updatePreference('timezone', e.target.value)}
                 className="w-full px-4 py-3 bg-arena-dark border border-arena-border rounded-lg text-white focus:outline-none focus:border-neon-purple transition-colors"
               >
-                <option value="UTC+3">UTC+3 (Москва)</option>
-                <option value="UTC+2">UTC+2 (Киев)</option>
-                <option value="UTC+0">UTC+0 (Лондон)</option>
-                <option value="auto">Автоопределение</option>
+                <option value="UTC+3">{t('pref_timezone_moscow')}</option>
+                <option value="UTC+2">{t('pref_timezone_kiev')}</option>
+                <option value="UTC+0">{t('pref_timezone_london')}</option>
+                <option value="auto">{t('pref_timezone_auto')}</option>
               </select>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-orbitron font-semibold text-gray-300 mb-2">
-                  Формат даты
+                  {t('pref_date_format')}
                 </label>
                 <select
                   value={preferences.dateFormat}
@@ -234,15 +234,15 @@ export default function PreferencesSettingsPage() {
 
               <div>
                 <label className="block text-sm font-orbitron font-semibold text-gray-300 mb-2">
-                  Формат времени
+                  {t('pref_time_format')}
                 </label>
                 <select
                   value={preferences.timeFormat}
                   onChange={(e) => updatePreference('timeFormat', e.target.value as TimeFormat)}
                   className="w-full px-4 py-3 bg-arena-dark border border-arena-border rounded-lg text-white focus:outline-none focus:border-neon-purple transition-colors"
                 >
-                  <option value="24h">24-часовой</option>
-                  <option value="12h">12-часовой (AM/PM)</option>
+                  <option value="24h">{t('pref_time_format_24')}</option>
+                  <option value="12h">{t('pref_time_format_12')}</option>
                 </select>
               </div>
             </div>
@@ -253,12 +253,12 @@ export default function PreferencesSettingsPage() {
         <section>
           <h3 className="font-orbitron font-semibold text-white mb-4 flex items-center gap-2">
             <Gamepad2 className="w-5 h-5 text-neon-blue" />
-            Игры
+            {t('pref_games')}
           </h3>
           <div className="space-y-3">
             <PreferenceToggle
-              label="Скрывать неинтересные турниры"
-              description="Автоматически скрывать турниры в играх которые вам не интересны"
+              label={t('pref_hide_uninteresting')}
+              description={t('pref_hide_uninteresting_desc')}
               checked={preferences.hideUninterestingTournaments}
               onChange={() =>
                 updatePreference(
@@ -268,8 +268,8 @@ export default function PreferencesSettingsPage() {
               }
             />
             <PreferenceToggle
-              label="Показывать только региональные турниры"
-              description="Фильтровать турниры по вашему региону"
+              label={t('pref_show_regional')}
+              description={t('pref_show_regional_desc')}
               checked={preferences.showOnlyRegionalTournaments}
               onChange={() =>
                 updatePreference(
@@ -281,17 +281,17 @@ export default function PreferencesSettingsPage() {
 
             <div className="p-4 bg-white/5 rounded-lg border border-arena-border">
               <label className="block text-sm font-orbitron font-semibold text-white mb-3">
-                Минимальный призовой фонд
+                {t('pref_min_prize_pool')}
               </label>
               <select
                 value={preferences.minPrizePoolFilter}
                 onChange={(e) => updatePreference('minPrizePoolFilter', Number(e.target.value))}
                 className="w-full px-4 py-3 bg-arena-dark border border-arena-border rounded-lg text-white focus:outline-none focus:border-neon-purple transition-colors"
               >
-                <option value={0}>Любой</option>
-                <option value={1000}>от 1,000₽</option>
-                <option value={5000}>от 5,000₽</option>
-                <option value={10000}>от 10,000₽</option>
+                <option value={0}>{t('pref_min_prize_any')}</option>
+                <option value={1000}>{t('pref_min_prize_val').replace('{value}', '1,000')}</option>
+                <option value={5000}>{t('pref_min_prize_val').replace('{value}', '5,000')}</option>
+                <option value={10000}>{t('pref_min_prize_val').replace('{value}', '10,000')}</option>
               </select>
             </div>
           </div>
@@ -301,40 +301,40 @@ export default function PreferencesSettingsPage() {
         <section>
           <h3 className="font-orbitron font-semibold text-white mb-4 flex items-center gap-2">
             <Zap className="w-5 h-5 text-neon-blue" />
-            Производительность
+            {t('pref_performance')}
           </h3>
           <div className="space-y-3">
             <PreferenceToggle
-              label="Включить анимации"
-              description="Плавные переходы и анимации"
+              label={t('pref_enable_animations')}
+              description={t('pref_enable_animations_desc')}
               checked={preferences.enableAnimations}
               onChange={() => updatePreference('enableAnimations', !preferences.enableAnimations)}
             />
             <PreferenceToggle
-              label="Автовоспроизведение видео"
-              description="Автоматически воспроизводить видео контент"
+              label={t('pref_autoplay_videos')}
+              description={t('pref_autoplay_videos_desc')}
               checked={preferences.autoplayVideos}
               onChange={() => updatePreference('autoplayVideos', !preferences.autoplayVideos)}
             />
             <PreferenceToggle
-              label="Предзагрузка изображений"
-              description="Загружать изображения заранее для быстрого отображения"
+              label={t('pref_preload_images')}
+              description={t('pref_preload_images_desc')}
               checked={preferences.preloadImages}
               onChange={() => updatePreference('preloadImages', !preferences.preloadImages)}
             />
 
             <div className="p-4 bg-white/5 rounded-lg border border-arena-border">
               <label className="block text-sm font-orbitron font-semibold text-white mb-3">
-                Качество изображений
+                {t('pref_image_quality')}
               </label>
               <select
                 value={preferences.imageQuality}
                 onChange={(e) => updatePreference('imageQuality', e.target.value as ImageQuality)}
                 className="w-full px-4 py-3 bg-arena-dark border border-arena-border rounded-lg text-white focus:outline-none focus:border-neon-purple transition-colors"
               >
-                <option value="high">Высокое</option>
-                <option value="medium">Среднее</option>
-                <option value="low">Низкое</option>
+                <option value="high">{t('pref_quality_high')}</option>
+                <option value="medium">{t('pref_quality_medium')}</option>
+                <option value="low">{t('pref_quality_low')}</option>
               </select>
             </div>
           </div>
@@ -342,23 +342,23 @@ export default function PreferencesSettingsPage() {
 
         {/* Content */}
         <section>
-          <h3 className="font-orbitron font-semibold text-white mb-4">Контент</h3>
+          <h3 className="font-orbitron font-semibold text-white mb-4">{t('pref_content')}</h3>
           <div className="space-y-3">
             <PreferenceToggle
-              label="Показывать контент для взрослых (18+)"
-              description="Отображать контент с возрастным ограничением"
+              label={t('pref_show_adult')}
+              description={t('pref_show_adult_desc')}
               checked={preferences.showAdultContent}
               onChange={() => updatePreference('showAdultContent', !preferences.showAdultContent)}
             />
             <PreferenceToggle
-              label="Фильтровать нецензурную лексику"
-              description="Заменять нецензурные слова в чате"
+              label={t('pref_filter_profanity')}
+              description={t('pref_filter_profanity_desc')}
               checked={preferences.filterProfanity}
               onChange={() => updatePreference('filterProfanity', !preferences.filterProfanity)}
             />
             <PreferenceToggle
-              label="Скрывать спойлеры автоматически"
-              description="Автоматически скрывать спойлеры в обсуждениях"
+              label={t('pref_hide_spoilers')}
+              description={t('pref_hide_spoilers_desc')}
               checked={preferences.hideSpoilers}
               onChange={() => updatePreference('hideSpoilers', !preferences.hideSpoilers)}
             />

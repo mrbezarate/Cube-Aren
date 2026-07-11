@@ -7,6 +7,7 @@ import { useAuthStore } from '@/lib/store/auth.store';
 import TournamentCard from '@/components/tournaments/TournamentCard';
 import TournamentFilters from '@/components/tournaments/TournamentFilters';
 import Button from '@/components/ui/Button';
+import { useTranslation } from '@/lib/i18n';
 
 interface FiltersState {
   game: string;
@@ -38,6 +39,7 @@ function sortByFavorites(
 
 export default function TournamentsListPage() {
   const { user, isAuthenticated } = useAuthStore();
+  const { t } = useTranslation();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [favoriteGames, setFavoriteGames] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,15 +105,15 @@ export default function TournamentsListPage() {
       {/* Title Header */}
       <div className="border-b border-arena-border pb-4">
         <h1 className="font-orbitron font-black text-2xl sm:text-3xl text-white uppercase tracking-wider">
-          ⚔️ Все активные сражения
+          ⚔️ {t('all_active_battles')}
         </h1>
         <div className="flex items-center gap-4 mt-1">
           <p className="text-gray-400 text-xs">
-            Отслеживайте текущие игры, делайте прогнозы и находите лобби для участия.
+            {t('tournaments_desc')}
           </p>
           {favoriteGames.length > 0 && !filters.showAll && !filters.game && (
             <span className="text-[10px] text-neon-gold font-orbitron font-bold">
-              ★ Избранные игры идут первыми
+              {t('favorite_games_first')}
             </span>
           )}
         </div>
@@ -137,7 +139,7 @@ export default function TournamentsListPage() {
             </div>
           ) : tournaments.length === 0 ? (
             <div className="text-center py-20 glass-panel border border-arena-border rounded-xl text-gray-500 text-sm">
-              Турниры по вашему запросу не найдены. Попробуйте сбросить фильтры.
+              {t('no_tournaments_reset')}
             </div>
           ) : (
             <>
@@ -160,10 +162,10 @@ export default function TournamentsListPage() {
                     disabled={page === 1}
                     onClick={() => setPage(page - 1)}
                   >
-                    Назад
+                    {t('page_prev')}
                   </Button>
                   <span className="font-orbitron font-bold text-xs text-gray-400">
-                    Страница {page} из {totalPages}
+                    {t('page_of').replace('{page}', String(page)).replace('{totalPages}', String(totalPages))}
                   </span>
                   <Button
                     variant="secondary"
@@ -171,7 +173,7 @@ export default function TournamentsListPage() {
                     disabled={page === totalPages}
                     onClick={() => setPage(page + 1)}
                   >
-                    Вперед
+                    {t('page_next')}
                   </Button>
                 </div>
               )}

@@ -11,6 +11,7 @@ import TournamentFilters from '@/components/tournaments/TournamentFilters';
 import { ArrowRight, Trophy, Users } from 'lucide-react';
 import Link from 'next/link';
 import Button from '@/components/ui/Button';
+import { useTranslation } from '@/lib/i18n';
 
 interface FiltersState {
   game: string;
@@ -25,6 +26,7 @@ interface FiltersState {
 
 export default function Home() {
   const { user, isAuthenticated } = useAuthStore();
+  const { t } = useTranslation();
   const [featured, setFeatured] = useState<Tournament[]>([]);
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [favoriteGames, setFavoriteGames] = useState<string[]>([]);
@@ -106,7 +108,7 @@ export default function Home() {
               className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-bg-tertiary border border-white/[0.06] mb-6"
             >
               <span className="w-2 h-2 rounded-full bg-accent-success animate-pulse" />
-              <span className="text-sm text-text-secondary">Платформа активна</span>
+              <span className="text-sm text-text-secondary">{t('platform_active')}</span>
             </motion.div>
 
             <motion.h1
@@ -115,8 +117,8 @@ export default function Home() {
               transition={{ duration: 0.5, delay: 0.1 }}
               className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6"
             >
-              Играй в турнирах и{' '}
-              <span className="text-accent-primary">зарабатывай</span>
+              {t('play_and_earn_title')}
+              <span className="text-accent-primary">{t('play_and_earn_highlight')}</span>
             </motion.h1>
 
             <motion.p
@@ -125,7 +127,7 @@ export default function Home() {
               transition={{ duration: 0.5, delay: 0.2 }}
               className="text-lg text-text-secondary mb-8 max-w-xl"
             >
-              Создавай собственные турниры, собирай команду и соревнуйся за реальные призы
+              {t('hero_description')}
             </motion.p>
 
             <motion.div
@@ -137,13 +139,13 @@ export default function Home() {
               <Link href="/tournaments">
                 <Button variant="primary" size="lg">
                   <Trophy className="w-4 h-4" />
-                  Найти турнир
+                  {t('find_tournament')}
                 </Button>
               </Link>
               <Link href="/community">
                 <Button variant="secondary" size="lg">
                   <Users className="w-4 h-4" />
-                  Сообщество
+                  {t('community')}
                 </Button>
               </Link>
             </motion.div>
@@ -157,10 +159,10 @@ export default function Home() {
             className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-16 pt-8 border-t border-white/[0.06]"
           >
             {[
-              { value: '1,200+', label: 'Активных турниров' },
-              { value: '50K+', label: 'Игроков' },
-              { value: '2M+', label: 'Призовой фонд' },
-              { value: '99.9%', label: 'Аптайм' },
+              { value: '1,200+', label: t('stat_active_tournaments') },
+              { value: '50K+', label: t('stat_players') },
+              { value: '2M+', label: t('stat_prize_pool') },
+              { value: '99.9%', label: t('stat_uptime') },
             ].map((stat, i) => (
               <div key={i} className="text-center md:text-left">
                 <div className="text-2xl font-bold text-white">{stat.value}</div>
@@ -177,12 +179,12 @@ export default function Home() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between mb-8">
               <div>
-                <h2 className="text-2xl font-bold text-white">Избранные турниры</h2>
-                <p className="text-text-secondary mt-1">Лучшие события с наибольшими призами</p>
+                <h2 className="text-2xl font-bold text-white">{t('featured_tournaments')}</h2>
+                <p className="text-text-secondary mt-1">{t('featured_tournaments_desc')}</p>
               </div>
               <Link href="/tournaments">
                 <Button variant="ghost">
-                  Смотреть все
+                  {t('view_all')}
                   <ArrowRight className="w-4 h-4" />
                 </Button>
               </Link>
@@ -202,8 +204,8 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-end justify-between mb-8">
             <div>
-              <h2 className="text-2xl font-bold text-white">Все турниры</h2>
-              <p className="text-text-secondary mt-1">Найдите подходящее соревнование</p>
+              <h2 className="text-2xl font-bold text-white">{t('all_tournaments')}</h2>
+              <p className="text-text-secondary mt-1">{t('find_suitable_competition')}</p>
             </div>
           </div>
 
@@ -227,7 +229,7 @@ export default function Home() {
                 </div>
               ) : tournaments.length === 0 ? (
                 <div className="text-center py-16 bg-bg-secondary border border-white/[0.06] rounded-xl text-text-secondary">
-                  Турниры по вашему запросу не найдены.
+                  {t('no_tournaments_found')}
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

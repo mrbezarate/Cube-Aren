@@ -2,6 +2,7 @@ import { usePreferencesStore } from './store/preferences.store';
 
 export const translations = {
   ru: {
+    // Menu & Common
     home: 'Главная',
     tournaments: 'Турниры',
     community: 'Сообщество',
@@ -20,8 +21,145 @@ export const translations = {
     preferences: 'Предпочтения',
     loading: 'Загрузка...',
     save: 'Сохранить',
+    saved_success: 'Предпочтения обновлены!',
+    saved_error: 'Ошибка сохранения',
+    my_profile: 'Мой профиль',
+    
+    // Landing / Home Page
+    platform_active: 'Платформа активна',
+    play_and_earn_title: 'Играй в турнирах и ',
+    play_and_earn_highlight: 'зарабатывай',
+    hero_description: 'Создавай собственные турниры, собирай команду и соревнуйся за реальные призы',
+    find_tournament: 'Найти турнир',
+    stat_active_tournaments: 'Активных турниров',
+    stat_players: 'Игроков',
+    stat_prize_pool: 'Призовой фонд',
+    stat_uptime: 'Аптайм',
+    featured_tournaments: 'Избранные турниры',
+    featured_tournaments_desc: 'Лучшие события с наибольшими призами',
+    view_all: 'Смотреть все',
+    all_tournaments: 'Все турниры',
+    find_suitable_competition: 'Найдите подходящее соревнование',
+    no_tournaments_found: 'Турниры по вашему запросу не найдены.',
+    
+    // Tournaments List Page
+    all_active_battles: 'Все активные сражения',
+    tournaments_desc: 'Отслеживайте текущие игры, делайте прогнозы и находите лобби для участия.',
+    favorite_games_first: '★ Избранные игры идут первыми',
+    no_tournaments_reset: 'Турниры по вашему запросу не найдены. Попробуйте сбросить фильтры.',
+    page_prev: 'Назад',
+    page_next: 'Вперед',
+    page_of: 'Страница {page} из {totalPages}',
+    
+    // Tournament Card
+    status_draft: 'Черновик',
+    status_open: 'Открыт',
+    status_in_progress: 'В игре',
+    status_completed: 'Завершен',
+    status_cancelled: 'Отменен',
+    type_team: 'Командный',
+    type_solo: 'Одиночный',
+    stats_prize: 'Приз',
+    stats_participants: 'Участники',
+    filled_percentage: '{percentage}% заполнено',
+    more_details: 'Подробнее',
+    saved_to_starred: 'Добавлено в сохранённые',
+    removed_from_starred: 'Удалено из сохранённых',
+    login_to_save: 'Войдите в систему чтобы сохранять турниры',
+    error_try_again: 'Ошибка. Попробуйте снова',
+    star_save: 'Сохранить турнир',
+    star_unsave: 'Убрать из сохранённых',
+    star_fav: 'Избранное',
+
+    // Tournament Filters
+    filter_my_games: 'Мои игры',
+    filter_show_favorites: 'Показать избранные',
+    filter_favorites_first: 'Избранные первыми',
+    filter_on: 'ВКЛ',
+    filter_off: 'ВЫКЛ',
+    filter_search: 'Поиск',
+    filter_search_placeholder: 'Название турнира...',
+    filter_discipline: 'Дисциплина',
+    filter_all: 'Все',
+    filter_format: 'Формат',
+    filter_type: 'Тип',
+    filter_status: 'Статус',
+    filter_sort: 'Сортировка',
+    filter_reset: 'Сбросить фильтры',
+    
+    format_all: 'Все форматы',
+    format_1v1: '1 на 1',
+    format_5v5: '5 на 5',
+    format_battle_royale: 'Королевская битва',
+    format_custom: 'Кастомный',
+    
+    type_all: 'Все типы',
+    
+    status_all: 'Все статусы',
+    
+    sort_created_at: 'Дата создания',
+    sort_prize_pool: 'Призовой фонд',
+    sort_start_date: 'Дата начала',
+    sort_entry_fee: 'Стоимость входа',
+    sort_asc: 'По возрастанию',
+    sort_desc: 'По убыванию',
+
+    // Preferences Settings Page
+    pref_interface: 'Интерфейс',
+    pref_language: 'Язык',
+    pref_theme: 'Тема',
+    pref_theme_dark: 'Тёмная',
+    pref_theme_light: 'Светлая',
+    pref_theme_system: 'Системная',
+    pref_color_accent: 'Цветовой акцент',
+    pref_color_purple: 'Фиолетовый',
+    pref_color_blue: 'Синий',
+    pref_color_green: 'Зелёный',
+    pref_color_gold: 'Золотой',
+    
+    pref_display: 'Отображение',
+    pref_timezone: 'Часовой пояс',
+    pref_timezone_moscow: 'UTC+3 (Москва)',
+    pref_timezone_kiev: 'UTC+2 (Киев)',
+    pref_timezone_london: 'UTC+0 (Лондон)',
+    pref_timezone_auto: 'Автоопределение',
+    
+    pref_date_format: 'Формат даты',
+    pref_time_format: 'Формат времени',
+    pref_time_format_24: '24-часовой',
+    pref_time_format_12: '12-часовой (AM/PM)',
+    
+    pref_games: 'Игры',
+    pref_hide_uninteresting: 'Скрывать неинтересные турниры',
+    pref_hide_uninteresting_desc: 'Автоматически скрывать турниры в играх которые вам не интересны',
+    pref_show_regional: 'Показывать только региональные турниры',
+    pref_show_regional_desc: 'Фильтровать турниры по вашему региону',
+    pref_min_prize_pool: 'Минимальный призовой фонд',
+    pref_min_prize_any: 'Любой',
+    pref_min_prize_val: 'от {value}₽',
+    
+    pref_performance: 'Производительность',
+    pref_enable_animations: 'Включить анимации',
+    pref_enable_animations_desc: 'Плавные переходы и анимации',
+    pref_autoplay_videos: 'Автовоспроизведение видео',
+    pref_autoplay_videos_desc: 'Автоматически воспроизводить видео контент',
+    pref_preload_images: 'Предзагрузка изображений',
+    pref_preload_images_desc: 'Загружать изображения заранее для быстрого отображения',
+    pref_image_quality: 'Качество изображений',
+    pref_quality_high: 'Высокое',
+    pref_quality_medium: 'Среднее',
+    pref_quality_low: 'Низкое',
+    
+    pref_content: 'Контент',
+    pref_show_adult: 'Показывать контент для взрослых (18+)',
+    pref_show_adult_desc: 'Отображать контент с возрастным ограничением',
+    pref_filter_profanity: 'Фильтровать нецензурную лексику',
+    pref_filter_profanity_desc: 'Заменять нецензурные слова в чате',
+    pref_hide_spoilers: 'Скрывать спойлеры автоматически',
+    pref_hide_spoilers_desc: 'Автоматически скрывать спойлеры в обсуждениях',
   },
   en: {
+    // Menu & Common
     home: 'Home',
     tournaments: 'Tournaments',
     community: 'Community',
@@ -40,6 +178,142 @@ export const translations = {
     preferences: 'Preferences',
     loading: 'Loading...',
     save: 'Save',
+    saved_success: 'Preferences updated!',
+    saved_error: 'Error saving preferences',
+    my_profile: 'My Profile',
+
+    // Landing / Home Page
+    platform_active: 'Platform active',
+    play_and_earn_title: 'Play in tournaments & ',
+    play_and_earn_highlight: 'earn credits',
+    hero_description: 'Create your own tournaments, gather a team and compete for real prizes',
+    find_tournament: 'Find Tournament',
+    stat_active_tournaments: 'Active Tournaments',
+    stat_players: 'Players',
+    stat_prize_pool: 'Prize Pool',
+    stat_uptime: 'Uptime',
+    featured_tournaments: 'Featured Tournaments',
+    featured_tournaments_desc: 'Top events with the biggest prize pools',
+    view_all: 'View All',
+    all_tournaments: 'All Tournaments',
+    find_suitable_competition: 'Find a suitable competition',
+    no_tournaments_found: 'No tournaments found matching your query.',
+
+    // Tournaments List Page
+    all_active_battles: 'All Active Battles',
+    tournaments_desc: 'Track current matches, make predictions and find lobbies to join.',
+    favorite_games_first: '★ Favorite games go first',
+    no_tournaments_reset: 'No tournaments found matching your criteria. Try resetting filters.',
+    page_prev: 'Back',
+    page_next: 'Next',
+    page_of: 'Page {page} of {totalPages}',
+
+    // Tournament Card
+    status_draft: 'Draft',
+    status_open: 'Open',
+    status_in_progress: 'Live',
+    status_completed: 'Completed',
+    status_cancelled: 'Cancelled',
+    type_team: 'Team',
+    type_solo: 'Solo',
+    stats_prize: 'Prize',
+    stats_participants: 'Participants',
+    filled_percentage: '{percentage}% filled',
+    more_details: 'More Details',
+    saved_to_starred: 'Added to saved',
+    removed_from_starred: 'Removed from saved',
+    login_to_save: 'Please log in to save tournaments',
+    error_try_again: 'Error. Please try again',
+    star_save: 'Save tournament',
+    star_unsave: 'Remove from saved',
+    star_fav: 'Favorite',
+
+    // Tournament Filters
+    filter_my_games: 'My Games',
+    filter_show_favorites: 'Show Favorites',
+    filter_favorites_first: 'Favorites First',
+    filter_on: 'ON',
+    filter_off: 'OFF',
+    filter_search: 'Search',
+    filter_search_placeholder: 'Tournament title...',
+    filter_discipline: 'Discipline',
+    filter_all: 'All',
+    filter_format: 'Format',
+    filter_type: 'Type',
+    filter_status: 'Status',
+    filter_sort: 'Sort By',
+    filter_reset: 'Reset Filters',
+    
+    format_all: 'All Formats',
+    format_1v1: '1 vs 1',
+    format_5v5: '5 vs 5',
+    format_battle_royale: 'Battle Royale',
+    format_custom: 'Custom',
+    
+    type_all: 'All Types',
+    
+    status_all: 'All Statuses',
+    
+    sort_created_at: 'Date Created',
+    sort_prize_pool: 'Prize Pool',
+    sort_start_date: 'Start Date',
+    sort_entry_fee: 'Entry Fee',
+    sort_asc: 'Ascending',
+    sort_desc: 'Descending',
+
+    // Preferences Settings Page
+    pref_interface: 'Interface',
+    pref_language: 'Language',
+    pref_theme: 'Theme',
+    pref_theme_dark: 'Dark',
+    pref_theme_light: 'Light',
+    pref_theme_system: 'System',
+    pref_color_accent: 'Color Accent',
+    pref_color_purple: 'Purple',
+    pref_color_blue: 'Blue',
+    pref_color_green: 'Green',
+    pref_color_gold: 'Gold',
+    
+    pref_display: 'Display',
+    pref_timezone: 'Timezone',
+    pref_timezone_moscow: 'UTC+3 (Moscow)',
+    pref_timezone_kiev: 'UTC+2 (Kyiv)',
+    pref_timezone_london: 'UTC+0 (London)',
+    pref_timezone_auto: 'Auto-detect',
+    
+    pref_date_format: 'Date Format',
+    pref_time_format: 'Time Format',
+    pref_time_format_24: '24-hour',
+    pref_time_format_12: '12-hour (AM/PM)',
+    
+    pref_games: 'Games',
+    pref_hide_uninteresting: 'Hide uninteresting tournaments',
+    pref_hide_uninteresting_desc: 'Automatically hide tournaments for games you are not interested in',
+    pref_show_regional: 'Show only regional tournaments',
+    pref_show_regional_desc: 'Filter tournaments by your region',
+    pref_min_prize_pool: 'Minimum Prize Pool',
+    pref_min_prize_any: 'Any',
+    pref_min_prize_val: 'from {value}₽',
+    
+    pref_performance: 'Performance',
+    pref_enable_animations: 'Enable animations',
+    pref_enable_animations_desc: 'Smooth transitions and animations',
+    pref_autoplay_videos: 'Autoplay videos',
+    pref_autoplay_videos_desc: 'Automatically play video content',
+    pref_preload_images: 'Preload images',
+    pref_preload_images_desc: 'Preload images for faster navigation',
+    pref_image_quality: 'Image Quality',
+    pref_quality_high: 'High',
+    pref_quality_medium: 'Medium',
+    pref_quality_low: 'Low',
+    
+    pref_content: 'Content',
+    pref_show_adult: 'Show adult content (18+)',
+    pref_show_adult_desc: 'Display age-restricted content',
+    pref_filter_profanity: 'Filter profanity',
+    pref_filter_profanity_desc: 'Censor offensive words in chat',
+    pref_hide_spoilers: 'Hide spoilers automatically',
+    pref_hide_spoilers_desc: 'Automatically collapse spoilers in discussions',
   },
   ua: {
     home: 'Головна',
@@ -60,7 +334,7 @@ export const translations = {
     preferences: 'Налаштування',
     loading: 'Завантаження...',
     save: 'Зберегти',
-  },
+  }
 };
 
 export type TranslationKey = keyof typeof translations.ru;
@@ -70,7 +344,8 @@ export function useTranslation() {
   const lang = preferences?.language || 'ru';
 
   const t = (key: TranslationKey): string => {
-    return translations[lang]?.[key] || translations.ru[key] || key;
+    const dict = translations[lang] as Record<string, string> | undefined;
+    return dict?.[key] || translations.ru[key] || key;
   };
 
   return { t, lang };

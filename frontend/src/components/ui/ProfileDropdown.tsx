@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Coins, LogOut, Settings, User as UserIcon } from 'lucide-react';
 import { User } from '@/types';
 import { useAuthStore } from '@/lib/store/auth.store';
+import { useTranslation } from '@/lib/i18n';
 import Avatar from './Avatar';
 import Dropdown, { DropdownDivider, DropdownItem } from './Dropdown';
 
@@ -15,6 +16,7 @@ interface ProfileDropdownProps {
 export default function ProfileDropdown({ user }: ProfileDropdownProps) {
   const router = useRouter();
   const logout = useAuthStore((state) => state.logout);
+  const { t } = useTranslation();
 
   const handleLogout = () => {
     logout();
@@ -42,17 +44,17 @@ export default function ProfileDropdown({ user }: ProfileDropdownProps) {
       </div>
       <DropdownDivider />
       <DropdownItem href={`/profile/${user.id}`} icon={<UserIcon className="h-4 w-4" />}>
-        Мой профиль
+        {t('my_profile')}
       </DropdownItem>
       <DropdownItem href="/wallet" icon={<Coins className="h-4 w-4" />}>
-        Кошелек
+        {t('wallet')}
       </DropdownItem>
       <DropdownItem href="/settings/profile" icon={<Settings className="h-4 w-4" />}>
-        Настройки
+        {t('settings')}
       </DropdownItem>
       <DropdownDivider />
       <DropdownItem onSelect={handleLogout} icon={<LogOut className="h-4 w-4" />} variant="danger">
-        Выйти
+        {t('logout')}
       </DropdownItem>
     </Dropdown>
   );
