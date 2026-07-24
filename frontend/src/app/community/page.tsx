@@ -20,6 +20,11 @@ const BOARDS_DETAILS: Record<GameType, { title: string; description: string }> =
   lol: { title: 'LoL Rift', description: 'Мета, пики и общение по лигам.' },
   pubg: { title: 'PUBG Drop', description: 'Сквады, ротации и соревновательная сцена.' },
   apex: { title: 'Apex Arena', description: 'Легенды, макро и игровые сборки.' },
+  fortnite: { title: 'Fortnite Island', description: 'Билды, ротации и новости сезонов.' },
+  rocket_league: { title: 'RL Stadium', description: 'Техники, стаки и обсуждение RLCS.' },
+  overwatch2: { title: 'OW2 Watch', description: 'Герои, меты и поиск команды.' },
+  rainbow6: { title: 'R6 Siege Base', description: 'Тактики осады, операторы и турниры.' },
+  fifa: { title: 'FIFA Club', description: 'Сборки команд, тактики и турниры.' },
   custom: { title: 'Общий хаб', description: 'Темы о киберспорте, общие вопросы и оффтоп.' },
 };
 
