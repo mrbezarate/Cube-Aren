@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Follow } from '../../entities/follow.entity';
 import { User } from '../../entities/user.entity';
+import { toUserCard } from '../../common/user-view';
 
 @Injectable()
 export class FriendsService {
@@ -113,14 +114,7 @@ export class FriendsService {
     
     const result = filtered.map(f => ({
       id: f.follower.id, // ID самого пользователя (для frontend совместимости)
-      sender: {          // Оборачиваем в sender для совместимости с frontend
-        id: f.follower.id,
-        username: f.follower.username,
-        displayName: f.follower.displayName,
-        avatarUrl: f.follower.avatarUrl,
-        cardBannerUrl: f.follower.cardBannerUrl,
-        mainGame: f.follower.mainGame,
-      },
+      sender: toUserCard(f.follower), // Оборачиваем в sender для совместимости с frontend
       createdAt: f.createdAt,
     }));
     
@@ -167,14 +161,7 @@ export class FriendsService {
     console.log('[FriendsService] Filtered friends:', filtered.length);
     
     const friendUsers = filtered.map(f => ({
-      id: f.follower.id,
-      username: f.follower.username,
-      displayName: f.follower.displayName,
-      avatarUrl: f.follower.avatarUrl,
-      cardBannerUrl: f.follower.cardBannerUrl,
-      mainGame: f.follower.mainGame,
-      gender: f.follower.gender,
-      followersCount: f.follower.followersCount,
+      ...toUserCard(f.follower),
       friendsSince: f.createdAt,
     }));
 

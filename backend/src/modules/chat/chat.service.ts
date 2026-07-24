@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { ChatRoom } from '../../entities/chat-room.entity';
 import { Message } from '../../entities/message.entity';
+import { toUserCard } from '../../common/user-view';
 
 @Injectable()
 export class ChatService {
@@ -131,13 +132,7 @@ export class ChatService {
 
         return {
           id: room.id,
-          companion: {
-            id: companion.id,
-            username: companion.username,
-            displayName: companion.displayName,
-            avatarUrl: companion.avatarUrl,
-            cardBannerUrl: companion.cardBannerUrl,
-          },
+          companion: toUserCard(companion),
           lastMessage: room.lastMessage,
           lastMessageAt: room.lastMessageAt,
           unreadCount,

@@ -1,6 +1,18 @@
 export type Gender = 'male' | 'female' | 'other';
 export type GameType = 'cs2' | 'dota2' | 'valorant' | 'lol' | 'pubg' | 'apex' | 'custom';
 
+export interface UserCard {
+  id: string;
+  username: string;
+  displayName?: string;
+  avatarUrl?: string;
+  cardBannerUrl?: string;
+  gender?: Gender;
+  mainGame?: GameType;
+  level?: number;
+  followersCount?: number;
+}
+
 export interface User {
   id: string;
   username: string;
@@ -48,16 +60,9 @@ export interface Follow {
   createdAt: string;
 }
 
-export interface SocialUser {
-  id: string;
-  username: string;
-  displayName?: string;
-  avatarUrl?: string;
-  gender?: Gender;
-  mainGame?: GameType;
-  followersCount?: number;
+export type SocialUser = UserCard & {
   followedAt?: string;
-}
+};
 
 export interface UserProfile extends User {
   arenaPower: number;
@@ -95,14 +100,7 @@ export interface TeamSummary {
 
 export interface LeaderboardEntry {
   rank: number;
-  user: {
-    id: string;
-    username: string;
-    displayName?: string;
-    avatarUrl?: string;
-    cardBannerUrl?: string;
-    gender?: Gender;
-  };
+  user: UserCard;
   score: number;
   rating: number;
   wins: number;
@@ -183,23 +181,12 @@ export interface TeamJoinRequest {
   teamName: string;
   message?: string;
   createdAt: string;
-  user: {
-    id: string;
-    username: string;
-    displayName?: string;
-    avatarUrl?: string;
-  };
+  user: UserCard;
 }
 
-export interface UserSearchResult {
-  id: string;
-  username: string;
-  displayName?: string;
-  avatarUrl?: string;
-  followersCount: number;
-  mainGame?: GameType;
-  friendshipStatus?: 'friends' | 'pending_sent' | 'pending_received' | null;
-}
+export type UserSearchResult = UserCard & {
+  followStatus?: 'friends' | 'following' | 'follower' | 'none' | null;
+};
 
 export type TournamentGame = GameType;
 export type TournamentFormat = '1v1' | '5v5' | 'battle_royale' | 'custom';
@@ -351,12 +338,7 @@ export interface BlockedUser {
   id: string;
   userId: string;
   blockedUserId: string;
-  blockedUser: {
-    id: string;
-    username: string;
-    displayName?: string;
-    avatarUrl?: string;
-  };
+  blockedUser: UserCard;
   reason?: string;
   blockedAt: string;
 }
@@ -381,15 +363,7 @@ export interface CommunityPost {
   isPinned: boolean;
   isLocked: boolean;
   isLiked?: boolean;
-  author: {
-    id: string;
-    username: string;
-    displayName?: string;
-    avatarUrl?: string;
-    gender?: Gender;
-    mainGame?: GameType;
-    level: number;
-  } | null;
+  author: UserCard | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -401,14 +375,6 @@ export interface CommunityComment {
   content: string;
   likesCount: number;
   isLiked?: boolean;
-  author: {
-    id: string;
-    username: string;
-    displayName?: string;
-    avatarUrl?: string;
-    gender?: Gender;
-    mainGame?: GameType;
-    level: number;
-  } | null;
+  author: UserCard | null;
   createdAt: string;
 }

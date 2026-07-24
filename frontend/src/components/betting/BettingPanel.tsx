@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { toast } from 'react-hot-toast';
 import { Participant, OddsData } from '@/types';
 import Button from '../ui/Button';
+import Avatar from '../ui/Avatar';
 import { Coins, Swords, Target, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
@@ -181,17 +182,11 @@ export default function BettingPanel({
                           className="cursor-pointer hover:opacity-80 transition-opacity"
                           title="Профиль игрока"
                         >
-                          {p.user?.avatarUrl ? (
-                            <img
-                              src={p.user.avatarUrl}
-                              alt={p.user.username}
-                              className="w-6 h-6 rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-6 h-6 rounded-full bg-neon-purple/20 flex items-center justify-center text-[10px] font-bold text-neon-purple">
-                              {p.user?.username?.[0]?.toUpperCase() ?? '?'}
-                            </div>
-                          )}
+                          <Avatar
+                            src={p.user?.avatarUrl}
+                            alt={p.user?.username || '?'}
+                            className="w-6 h-6 rounded-full"
+                          />
                         </div>
                         <span className="text-xs font-bold">{p.user?.username}</span>
                       </div>
@@ -262,10 +257,10 @@ export default function BettingPanel({
                               className="w-5 h-5 rounded-full overflow-hidden border border-white/20 hover:border-white transition-colors cursor-pointer shrink-0"
                               title={m.user?.displayName || m.user?.username}
                             >
-                              <img
-                                src={m.user?.avatarUrl || '/default-avatar.svg'}
+                              <Avatar
+                                src={m.user?.avatarUrl}
                                 alt={m.user?.username || 'User'}
-                                className="w-full h-full object-cover"
+                                className="w-full h-full"
                               />
                             </div>
                           ))}

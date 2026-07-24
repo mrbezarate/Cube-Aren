@@ -8,6 +8,7 @@ import { toast } from 'react-hot-toast';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
+import Avatar from '@/components/ui/Avatar';
 import { UserPlus, Users, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -240,13 +241,7 @@ export default function FriendsPage() {
                 {friends.map((friend) => (
                   <Card key={friend.id} className="p-4 flex items-center justify-between gap-4">
                     <Link href={`/profile/${friend.id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity flex-1">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-neon-purple to-neon-blue flex items-center justify-center text-white font-bold flex-shrink-0">
-                        {friend.avatarUrl ? (
-                          <img src={friend.avatarUrl} alt={friend.username} className="w-full h-full rounded-full object-cover" />
-                        ) : (
-                          <span className="text-lg">{friend.username[0].toUpperCase()}</span>
-                        )}
-                      </div>
+                      <Avatar src={friend.avatarUrl} alt={friend.displayName || friend.username} className="w-12 h-12 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="font-orbitron font-bold text-sm text-white">
                           {friend.displayName || friend.username}
@@ -297,13 +292,7 @@ export default function FriendsPage() {
                 {incoming.map((req) => (
                   <Card key={req.id} className="p-4 flex items-center justify-between gap-4">
                     <Link href={`/profile/${req.sender.id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-neon-purple to-neon-blue flex items-center justify-center text-white font-bold">
-                        {req.sender.avatarUrl ? (
-                          <img src={req.sender.avatarUrl} alt={req.sender.username} className="w-full h-full rounded-full object-cover" />
-                        ) : (
-                          <span className="text-lg">{req.sender.username[0].toUpperCase()}</span>
-                        )}
-                      </div>
+                      <Avatar src={req.sender.avatarUrl} alt={req.sender.displayName || req.sender.username} className="w-12 h-12" />
                       <div>
                         <p className="font-orbitron font-bold text-sm text-white">
                           {req.sender.displayName || req.sender.username}
@@ -365,13 +354,7 @@ export default function FriendsPage() {
                 return (
                   <Card key={result.id} className="p-4 flex items-center justify-between gap-4">
                     <Link href={`/profile/${result.id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-neon-purple to-neon-blue flex items-center justify-center text-white font-bold">
-                        {result.avatarUrl ? (
-                          <img src={result.avatarUrl} alt={result.username} className="w-full h-full rounded-full object-cover" />
-                        ) : (
-                          result.username[0].toUpperCase()
-                        )}
-                      </div>
+                      <Avatar src={result.avatarUrl} alt={result.displayName || result.username} className="w-12 h-12" />
                       <div>
                         <p className="font-orbitron font-bold text-sm text-white">
                           {result.displayName || result.username}

@@ -17,6 +17,7 @@ import { ProfileView } from '../../entities/profile-view.entity';
 import { OnboardingDto } from './dto/onboarding.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { toUserCard } from '../../common/user-view';
 
 @Injectable()
 export class UsersService {
@@ -269,14 +270,7 @@ export class UsersService {
     const filteredUsers = users.filter((user) => user.id !== currentUserId);
 
     if (!currentUserId) {
-      return filteredUsers.map((user) => ({
-        id: user.id,
-        username: user.username,
-        displayName: user.displayName,
-        avatarUrl: user.avatarUrl,
-        followersCount: user.followersCount,
-        mainGame: user.mainGame,
-      }));
+      return filteredUsers.map((user) => toUserCard(user));
     }
 
     // Если пользователь авторизован, получаем статусы подписок батчем
@@ -284,12 +278,7 @@ export class UsersService {
     const friendshipStatuses = await this.getBatchFollowStatuses(currentUserId, userIds);
 
     return filteredUsers.map((user) => ({
-      id: user.id,
-      username: user.username,
-      displayName: user.displayName,
-      avatarUrl: user.avatarUrl,
-      followersCount: user.followersCount,
-      mainGame: user.mainGame,
+      ...toUserCard(user),
       followStatus: friendshipStatuses.get(user.id) || 'none',
     }));
   }
@@ -617,14 +606,7 @@ export class UsersService {
       },
       data: pageItems.map((s) => ({
         rank: s.leaderboardRank,
-        user: {
-          id: s.user.id,
-          username: s.user.username,
-          displayName: s.user.displayName,
-          avatarUrl: s.user.avatarUrl,
-          cardBannerUrl: s.user.cardBannerUrl,
-          gender: s.user.gender,
-        },
+        user: toUserCard(s.user),
         score: this.calculateStreetScore(s),
         rating: s.rating,
         wins: s.wins,
@@ -692,13 +674,7 @@ export class UsersService {
       data: follows
         .filter(f => f.follower !== null)
         .map(f => ({
-          id: f.follower.id,
-          username: f.follower.username,
-          displayName: f.follower.displayName,
-          avatarUrl: f.follower.avatarUrl,
-          gender: f.follower.gender,
-          mainGame: f.follower.mainGame,
-          followersCount: f.follower.followersCount,
+          ...toUserCard(f.follower),
           followedAt: f.createdAt,
         })),
       total,
@@ -722,13 +698,7 @@ export class UsersService {
       data: follows
         .filter(f => f.following !== null)
         .map(f => ({
-          id: f.following.id,
-          username: f.following.username,
-          displayName: f.following.displayName,
-          avatarUrl: f.following.avatarUrl,
-          gender: f.following.gender,
-          mainGame: f.following.mainGame,
-          followersCount: f.following.followersCount,
+          ...toUserCard(f.following),
           followedAt: f.createdAt,
         })),
       total,
@@ -786,13 +756,7 @@ export class UsersService {
       .filter(v => v.viewer !== null && new Date(v.viewedAt) >= oneMonthAgo)
       .map(v => ({
         id: v.id,
-        viewer: {
-          id: v.viewer.id,
-          username: v.viewer.username,
-          displayName: v.viewer.displayName,
-          avatarUrl: v.viewer.avatarUrl,
-          mainGame: v.viewer.mainGame,
-        },
+        viewer: toUserCard(v.viewer),
         viewedAt: v.viewedAt,
       }));
 

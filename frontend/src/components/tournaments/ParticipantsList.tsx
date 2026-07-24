@@ -4,6 +4,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Participant, Tournament } from '@/types';
 import Badge from '../ui/Badge';
+import Avatar from '../ui/Avatar';
 import { User, Medal, Crown } from 'lucide-react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -147,15 +148,11 @@ export default function ParticipantsList({
                         }
                       >
                         <Link href={`/profile/${m.user?.id || ''}`} className="flex items-center gap-2.5 group">
-                          <div className="w-8 h-8 rounded-full border border-arena-border/50 overflow-hidden relative">
-                            {m.user?.avatarUrl ? (
-                              <img src={m.user.avatarUrl} alt={m.user?.username} className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center bg-arena-card text-gray-400">
-                                <User className="w-3.5 h-3.5" />
-                              </div>
-                            )}
-                          </div>
+                          <Avatar
+                            src={m.user?.avatarUrl}
+                            alt={m.user?.username || 'Игрок'}
+                            className="w-8 h-8 rounded-full"
+                          />
                           <span className="text-sm font-bold text-white group-hover:text-neon-blue transition-colors">
                             {m.user?.username || 'Игрок'}
                           </span>
@@ -212,15 +209,11 @@ export default function ParticipantsList({
                         }
                       >
                         <Link href={`/profile/${m.user?.id || ''}`} className="flex items-center gap-2.5 group">
-                          <div className="w-8 h-8 rounded-full border border-arena-border/50 overflow-hidden relative">
-                            {m.user?.avatarUrl ? (
-                              <img src={m.user.avatarUrl} alt={m.user?.username} className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center bg-arena-card text-gray-400">
-                                <User className="w-3.5 h-3.5" />
-                              </div>
-                            )}
-                          </div>
+                          <Avatar
+                            src={m.user?.avatarUrl}
+                            alt={m.user?.username || 'Игрок'}
+                            className="w-8 h-8 rounded-full"
+                          />
                           <span className="text-sm font-bold text-white group-hover:text-neon-blue transition-colors">
                             {m.user?.username || 'Игрок'}
                           </span>
@@ -295,15 +288,11 @@ export default function ParticipantsList({
                         }
                       >
                         <Link href={`/profile/${m.user?.id || ''}`} className="flex items-center gap-2.5 group min-w-0">
-                          <div className="w-7 h-7 rounded-full border border-arena-border/50 overflow-hidden relative shrink-0">
-                            {m.user?.avatarUrl ? (
-                              <img src={m.user.avatarUrl} alt={m.user?.username} className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center bg-arena-card text-gray-400">
-                                <User className="w-3 h-3" />
-                              </div>
-                            )}
-                          </div>
+                          <Avatar
+                            src={m.user?.avatarUrl}
+                            alt={m.user?.username || 'Игрок'}
+                            className="w-7 h-7 rounded-full shrink-0"
+                          />
                           <span className="text-xs font-bold text-white group-hover:text-neon-blue transition-colors truncate">
                             {m.user?.username || 'Игрок'}
                           </span>
@@ -371,11 +360,11 @@ export default function ParticipantsList({
               {/* Left Side: Avatar, Username, Team */}
               <div className="flex items-center gap-3">
                 <Link href={`/profile/${p.user?.id || ''}`} className="w-9 h-9 rounded-full border border-arena-border bg-arena-dark flex items-center justify-center relative hover:border-neon-blue transition-colors">
-                  {p.user?.avatarUrl ? (
-                    <img src={p.user.avatarUrl} alt={p.user?.username || 'User'} className="w-full h-full object-cover rounded-full" />
-                  ) : (
-                    <User className="w-4.5 h-4.5 text-gray-400" />
-                  )}
+                  <Avatar
+                    src={p.user?.avatarUrl}
+                    alt={p.user?.username || 'User'}
+                    className="w-9 h-9 rounded-full"
+                  />
                   {isWinner && (
                     <Crown className="w-4 h-4 text-neon-gold absolute -top-2 -right-1 rotate-12" />
                   )}

@@ -19,15 +19,12 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import Avatar from '@/components/ui/Avatar';
+import { UserCard } from '@/types';
 
 interface TeamMember {
   id: string;
-  userId: string;
-  username: string;
-  displayName?: string;
-  avatarUrl?: string;
-  cardBannerUrl?: string;
-  gender?: string;
+  user: UserCard;
   role: string;
   joinedAt: string;
 }
@@ -490,21 +487,22 @@ export default function TeamDetailPage() {
 
               <div className="space-y-3">
                 {team.members.map((member) => {
+                  const user = member.user;
                   const formattedJoinDate = format(new Date(member.joinedAt), 'd MMM yyyy', { locale: ru });
-                  const isUserCaptain = member.role === 'captain' || member.userId === team.captainId;
+                  const isUserCaptain = member.role === 'captain' || user.id === team.captainId;
                   const isUserVice = member.role === 'vice_captain';
                   const isUserMod = member.role === 'moderator';
                   
-                  const isTargetSelf = member.userId === currentUser?.id;
+                  const isTargetSelf = user.id === currentUser?.id;
                   
                   return (
                     <div
                       key={member.id}
                       className="p-3.5 rounded-xl border border-border-subtle flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all"
                       style={
-                        member.cardBannerUrl
+                        user.cardBannerUrl
                           ? {
-                              backgroundImage: `linear-gradient(90deg, rgba(20, 20, 30, 0.95) 0%, rgba(20, 20, 30, 0.85) 100%), url(${member.cardBannerUrl})`,
+                              backgroundImage: `linear-gradient(90deg, rgba(20, 20, 30, 0.95) 0%, rgba(20, 20, 30, 0.85) 100%), url(${user.cardBannerUrl})`,
                               backgroundSize: 'cover',
                               backgroundPosition: 'center',
                               borderColor: 'var(--border-subtle)'
@@ -514,14 +512,10 @@ export default function TeamDetailPage() {
                     >
                       <div className="flex items-center gap-3">
                         <Link
-                          href={`/profile/${member.userId}`}
+                          href={`/profile/${user.id}`}
                           className="w-10 h-10 rounded-lg border border-border-subtle bg-bg-primary flex items-center justify-center relative hover:border-accent-secondary transition-colors shrink-0"
                         >
-                          {member.avatarUrl ? (
-                            <img src={member.avatarUrl} alt={member.username} className="w-full h-full object-cover rounded-lg" />
-                          ) : (
-                            <Shield className="w-5 h-5 text-gray-400" />
-                          )}
+                          <Avatar src={user.avatarUrl} alt={user.displayName || user.username} className="w-10 h-10 rounded-lg" />
                           {isUserCaptain && (
                             <Crown className="w-4 h-4 text-accent-warning absolute -top-2 -right-1.5 rotate-12" />
                           )}
@@ -529,12 +523,12 @@ export default function TeamDetailPage() {
                         <div>
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <Link
-                              href={`/profile/${member.userId}`}
+                              href={`/profile/${user.id}`}
                               className="text-xs sm:text-sm font-bold text-white hover:text-accent-secondary transition-colors font-orbitron"
                             >
-                              {member.displayName || member.username}
+                              {user.displayName || user.username}
                             </Link>
-                            {member.gender && <GenderIcon gender={member.gender as any} size="sm" />}
+                            {user.gender && <GenderIcon gender={user.gender as any} size="sm" />}
                             
                             {/* Badges for roles */}
                             {isUserCaptain ? (
@@ -558,7 +552,7 @@ export default function TeamDetailPage() {
                         {canManageRoles && !isUserCaptain && !isTargetSelf && (
                           <select
                             value={member.role}
-                            onChange={(e) => handleRoleChange(member.userId, member.displayName || member.username, e.target.value)}
+                            onChange={(e) => handleRoleChange(user.id, user.displayName || user.username, e.target.value)}
                             className="bg-bg-primary border border-border-subtle rounded-lg text-[10px] text-gray-300 py-1 px-2 focus:outline-none"
                           >
                             <option value="member">Боец</option>
@@ -571,7 +565,7 @@ export default function TeamDetailPage() {
                         {/* Kick member button */}
                         {((isCaptain && !isUserCaptain) || (isViceCaptain && !isUserCaptain && !isUserVice)) && !isTargetSelf && (
                           <button
-                            onClick={() => handleKick(member.userId)}
+                            onClick={() => handleKick(user.id)}
                             title="Исключить игрока"
                             className="p-1.5 rounded bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 hover:text-red-300 transition-colors"
                           >
@@ -658,11 +652,7 @@ export default function TeamDetailPage() {
                     {pendingRequests.map((req) => (
                       <div key={req.id} className="rounded-xl border border-border-subtle p-3 bg-bg-tertiary/40 space-y-2">
                         <div className="flex items-center gap-2">
-                          <img
-                            src={req.user?.avatarUrl || '/default-avatar.svg'}
-                            alt={req.user?.username}
-                            className="w-7 h-7 rounded-lg border border-border-subtle object-cover"
-                          />
+                          <Avatar src={req.user?.avatarUrl} alt={req.user?.displayName || req.user?.username || ''} className="w-7 h-7 rounded-lg" />
                           <div className="min-w-0 flex-1">
                             <Link href={`/profile/${req.user?.id}`} className="text-xs font-bold text-white hover:text-accent-secondary transition-colors truncate block">
                               {req.user?.displayName || req.user?.username}

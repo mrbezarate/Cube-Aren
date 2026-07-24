@@ -8,6 +8,7 @@ import { api } from '@/lib/api';
 import { toast } from 'react-hot-toast';
 import { Send, Users, MessageCircle, ArrowLeft } from 'lucide-react';
 import Button from '@/components/ui/Button';
+import Avatar from '@/components/ui/Avatar';
 
 interface ChatRoom {
   id: string;
@@ -376,13 +377,7 @@ function ChatPageContent() {
                   }
                 >
                   <div className="relative flex-shrink-0">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-neon-purple to-neon-blue flex items-center justify-center text-white font-bold">
-                      {friend.avatarUrl ? (
-                        <img src={friend.avatarUrl} alt={friend.username} className="w-full h-full rounded-full object-cover" />
-                      ) : (
-                        <span className="text-base">{friend.username[0].toUpperCase()}</span>
-                      )}
-                    </div>
+                    <Avatar src={friend.avatarUrl} alt={friend.displayName || friend.username} className="w-12 h-12" />
                     {room && room.unreadCount > 0 && (
                       <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 border-2 border-arena-card flex items-center justify-center animate-pulse">
                         <span className="text-white text-[9px] font-bold">{room.unreadCount}</span>
@@ -439,13 +434,7 @@ function ChatPageContent() {
                 >
                   <ArrowLeft className="w-6 h-6" />
                 </button>
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-neon-purple to-neon-blue flex items-center justify-center text-white font-bold">
-                  {selectedRoom.companion.avatarUrl ? (
-                    <img src={selectedRoom.companion.avatarUrl} alt={selectedRoom.companion.username} className="w-full h-full rounded-full object-cover" />
-                  ) : (
-                    <span className="text-lg">{selectedRoom.companion.username[0].toUpperCase()}</span>
-                  )}
-                </div>
+                <Avatar src={selectedRoom.companion.avatarUrl} alt={selectedRoom.companion.displayName || selectedRoom.companion.username} className="w-12 h-12" />
                 <div className="flex-1">
                   <p className="font-orbitron font-bold text-base text-white">
                     {selectedRoom.companion.displayName || selectedRoom.companion.username}

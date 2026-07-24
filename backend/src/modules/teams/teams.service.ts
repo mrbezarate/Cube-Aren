@@ -12,6 +12,7 @@ import { TeamMember, TeamRole } from '../../entities/team-member.entity';
 import { Team } from '../../entities/team.entity';
 import { User } from '../../entities/user.entity';
 import { GameType } from '../../entities/player-stats.entity';
+import { toUserCard } from '../../common/user-view';
 import { CreateTeamDto } from './dto/create-team.dto';
 import { RequestJoinTeamDto } from './dto/request-join-team.dto';
 import { UpdateTeamDto } from './dto/update-team.dto';
@@ -159,21 +160,13 @@ export class TeamsService {
       ...(await this.formatTeam(team, viewerId)),
       members: members.map(m => ({
         id: m.id,
-        userId: m.user.id,
-        username: m.user.username,
-        displayName: m.user.displayName,
-        avatarUrl: m.user.avatarUrl,
-        cardBannerUrl: m.user.cardBannerUrl,
-        gender: m.user.gender,
+        user: toUserCard(m.user),
         role: m.role,
         joinedAt: m.joinedAt,
       })),
       requests: requests.map((request) => ({
         id: request.id,
-        userId: request.user.id,
-        username: request.user.username,
-        displayName: request.user.displayName,
-        avatarUrl: request.user.avatarUrl,
+        user: toUserCard(request.user),
         message: request.message,
         createdAt: request.createdAt,
       })),
@@ -347,12 +340,7 @@ export class TeamsService {
       teamName: request.team.name,
       message: request.message,
       createdAt: request.createdAt,
-      user: {
-        id: request.user.id,
-        username: request.user.username,
-        displayName: request.user.displayName,
-        avatarUrl: request.user.avatarUrl,
-      },
+      user: toUserCard(request.user),
     }));
   }
 

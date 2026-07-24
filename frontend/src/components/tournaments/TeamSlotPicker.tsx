@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Crown, Shield, Lock, PlusCircle, Swords } from 'lucide-react';
 import { Participant } from '@/types';
 import Button from '../ui/Button';
+import Avatar from '../ui/Avatar';
 import Link from 'next/link';
 
 interface TeamSlotPickerProps {
@@ -218,21 +219,11 @@ export default function TeamSlotPicker({
                 <div className="flex flex-wrap gap-1">
                   {members.slice(0, 5).map((m) => (
                     <Link key={m.id} href={`/profile/${m.user?.id || ''}`} className="flex items-center gap-1 hover:opacity-80 transition-all" title={m.user?.username}>
-                      {m.user?.avatarUrl ? (
-                        <img
-                          src={m.user.avatarUrl}
-                          alt={m.user.username}
-                          className="w-5 h-5 rounded-full object-cover border"
-                          style={{ borderColor: color.bg }}
-                        />
-                      ) : (
-                        <div
-                          className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold"
-                          style={{ background: `${color.bg}50` }}
-                        >
-                          {m.user?.username?.[0]?.toUpperCase() ?? '?'}
-                        </div>
-                      )}
+                      <Avatar
+                        src={m.user?.avatarUrl}
+                        alt={m.user?.username || '?'}
+                        className="w-5 h-5 rounded-full border border-arena-border/50"
+                      />
                       {m.isTeamCaptain && (
                         <Crown className="w-2.5 h-2.5" style={{ color: color.bg }} />
                       )}

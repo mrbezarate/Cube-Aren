@@ -14,25 +14,7 @@ import {
 } from '../../entities/community-like.entity';
 import { User } from '../../entities/user.entity';
 import { CreatePostDto, CreateCommentDto, ListPostsQueryDto } from './dto/community.dto';
-
-const AUTHOR_FIELDS = [
-  'id',
-  'username',
-  'displayName',
-  'avatarUrl',
-  'gender',
-  'mainGame',
-  'level',
-] as const;
-
-function publicAuthor(user: User | null | undefined) {
-  if (!user) return null;
-  const result: Record<string, any> = {};
-  for (const field of AUTHOR_FIELDS) {
-    result[field] = (user as any)[field];
-  }
-  return result;
-}
+import { toUserCard } from '../../common/user-view';
 
 @Injectable()
 export class CommunityService {
@@ -209,7 +191,7 @@ export class CommunityService {
       content: comment.content,
       likesCount: comment.likesCount,
       isLiked: likedIds.has(comment.id),
-      author: publicAuthor(comment.author),
+      author: toUserCard(comment.author),
       createdAt: comment.createdAt,
     }));
   }
@@ -255,7 +237,7 @@ export class CommunityService {
       content: full.content,
       likesCount: 0,
       isLiked: false,
-      author: publicAuthor(full.author),
+      author: toUserCard(full.author),
       createdAt: full.createdAt,
     };
   }
@@ -327,7 +309,7 @@ export class CommunityService {
       isPinned: post.isPinned,
       isLocked: post.isLocked,
       isLiked,
-      author: publicAuthor(post.author),
+      author: toUserCard(post.author),
       createdAt: post.createdAt,
       updatedAt: post.updatedAt,
     };
