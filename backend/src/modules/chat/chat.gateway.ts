@@ -73,8 +73,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const { roomId } = data;
 
     // Проверяем что пользователь участник этой комнаты
-    const room = await this.chatService.getRoom(roomId);
-    if (!room || (room.user1Id !== userId && room.user2Id !== userId)) {
+    let room;
+    try {
+      room = await this.chatService.getRoom(roomId, userId);
+    } catch (e) {
       return { error: 'Access denied' };
     }
 
@@ -117,8 +119,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     try {
       // Проверяем что пользователь участник этой комнаты
-      const room = await this.chatService.getRoom(roomId);
-      if (!room || (room.user1Id !== userId && room.user2Id !== userId)) {
+      let room;
+      try {
+        room = await this.chatService.getRoom(roomId, userId);
+      } catch (e) {
         return { error: 'Access denied' };
       }
 
