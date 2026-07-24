@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -14,6 +15,7 @@ import { Team } from '../../entities/team.entity';
 import { Transaction } from '../../entities/transaction.entity';
 import { User } from '../../entities/user.entity';
 import { ProfileView } from '../../entities/profile-view.entity';
+import { PrivacySettings, PrivacyLevel, ProfileVisibility } from '../../entities/privacy-settings.entity';
 import { OnboardingDto } from './dto/onboarding.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -38,6 +40,8 @@ export class UsersService {
     private teamMembersRepo: Repository<TeamMember>,
     @InjectRepository(ProfileView)
     private profileViewRepo: Repository<ProfileView>,
+    @InjectRepository(PrivacySettings)
+    private privacySettingsRepo: Repository<PrivacySettings>,
   ) {}
 
   private normalizeProfileValue(value?: string | null): string | null {
@@ -267,20 +271,34 @@ export class UsersService {
       order: { followersCount: 'DESC', createdAt: 'ASC' },
     });
 
-    const filteredUsers = users.filter((user) => user.id !== currentUserId);
+    let filteredUsers = users.filter((user) => user.id !== currentUserId);
 
-    if (!currentUserId) {
-      return filteredUsers.map((user) => toUserCard(user));
+    if (filteredUsers.length > 0) {
+      const userIds = filteredUsers.map(u => u.id);
+      const privacies = await this.privacySettingsRepo.find({ where: { userId: In(userIds) } });
+      const privacyMap = new Map(privacies.map(p => [p.userId, p]));
+      const friendshipStatuses = currentUserId ? await this.getBatchFollowStatuses(currentUserId, userIds) : new Map();
+
+      filteredUsers = filteredUsers.filter(user => {
+        const privacy = privacyMap.get(user.id);
+        if (!privacy) return true;
+        if (privacy.profileVisibility === ProfileVisibility.PRIVATE) return false;
+        if (privacy.profileVisibility === ProfileVisibility.FRIENDS) {
+          const status = friendshipStatuses.get(user.id);
+          if (status !== 'friends') return false;
+        }
+        return true;
+      });
+
+      if (currentUserId) {
+        return filteredUsers.map((user) => ({
+          ...toUserCard(user),
+          followStatus: friendshipStatuses.get(user.id) || 'none',
+        }));
+      }
     }
 
-    // Если пользователь авторизован, получаем статусы подписок батчем
-    const userIds = filteredUsers.map(u => u.id);
-    const friendshipStatuses = await this.getBatchFollowStatuses(currentUserId, userIds);
-
-    return filteredUsers.map((user) => ({
-      ...toUserCard(user),
-      followStatus: friendshipStatuses.get(user.id) || 'none',
-    }));
+    return filteredUsers.map((user) => toUserCard(user));
   }
 
   // Получить статусы подписок для нескольких пользователей батчем
@@ -426,9 +444,22 @@ export class UsersService {
     return this.findById(userId);
   }
 
-  async getProfile(userId: string) {
+  async getProfile(userId: string, currentUserId?: string) {
     const user = await this.findById(userId);
     if (!user) throw new NotFoundException('User not found');
+
+    const privacy = await this.privacySettingsRepo.findOne({ where: { userId } });
+    const isOwner = currentUserId === userId;
+    const isFriend = currentUserId && !isOwner ? await this.areFriends(userId, currentUserId) : false;
+
+    if (privacy && !isOwner) {
+      if (privacy.profileVisibility === ProfileVisibility.PRIVATE) {
+        throw new ForbiddenException('Этот профиль скрыт настройками приватности');
+      }
+      if (privacy.profileVisibility === ProfileVisibility.FRIENDS && !isFriend) {
+        throw new ForbiddenException('Этот профиль доступен только для друзей');
+      }
+    }
 
     const stats = await this.playerStatsRepo.find({
       where: { userId },
@@ -445,13 +476,27 @@ export class UsersService {
     }
 
     const teamMemberships = await this.getTeamMemberships([userId]);
-    const teams = [...teamMemberships.values()];
-    const enrichedStats = stats.map((stat) => ({
+    let teams = [...teamMemberships.values()];
+    let enrichedStats = stats.map((stat) => ({
       ...stat,
       leaderboardRank: rankMap.get(stat.id) ?? stat.leaderboardRank,
       streetScore: this.calculateStreetScore(stat),
       currentTeam: teamMemberships.get(`${userId}:${stat.game}`) ?? null,
     }));
+
+    let mainTeam = user.mainGame ? teamMemberships.get(`${userId}:${user.mainGame}`) ?? null : null;
+    let favoriteGames = onboarding?.games || [];
+
+    if (privacy && !isOwner) {
+      if (privacy.canSeeStats === PrivacyLevel.NOBODY || (privacy.canSeeStats === PrivacyLevel.FRIENDS && !isFriend)) {
+        enrichedStats = [];
+        favoriteGames = [];
+      }
+      if (!privacy.showTournamentHistory) {
+        teams = [];
+        mainTeam = null;
+      }
+    }
 
     // Calculate days and hours until username/avatar/banner/gender can be changed
     const now = new Date();
@@ -499,8 +544,8 @@ export class UsersService {
       overallLeaderboardTotal: overallRank.total,
       stats: enrichedStats,
       teams,
-      mainTeam: user.mainGame ? teamMemberships.get(`${userId}:${user.mainGame}`) ?? null : null,
-      favoriteGames: onboarding?.games || [],
+      mainTeam,
+      favoriteGames,
       canChangeUsername: usernameChangeDays === 0,
       canChangeAvatar: avatarChangeDays === 0 && avatarChangeHours === 0,
       canChangeBanner: bannerChangeDays === 0 && bannerChangeHours === 0,
@@ -516,7 +561,17 @@ export class UsersService {
   }
 
   // ========== PLAYER STATS METHODS ==========
-  async getPlayerStats(userId: string, game: StatsGameType) {
+  async getPlayerStats(userId: string, game: StatsGameType, currentUserId?: string) {
+    const isOwner = currentUserId === userId;
+    const isFriend = currentUserId && !isOwner ? await this.areFriends(userId, currentUserId) : false;
+
+    if (!isOwner) {
+      const privacy = await this.privacySettingsRepo.findOne({ where: { userId } });
+      if (privacy && (privacy.canSeeStats === PrivacyLevel.NOBODY || (privacy.canSeeStats === PrivacyLevel.FRIENDS && !isFriend))) {
+        throw new ForbiddenException('Статистика скрыта настройками приватности');
+      }
+    }
+
     let stats = await this.playerStatsRepo.findOne({ where: { userId, game } });
     if (!stats) {
       // Create default stats if not exists
@@ -533,7 +588,17 @@ export class UsersService {
     };
   }
 
-  async getAllPlayerStats(userId: string) {
+  async getAllPlayerStats(userId: string, currentUserId?: string) {
+    const isOwner = currentUserId === userId;
+    const isFriend = currentUserId && !isOwner ? await this.areFriends(userId, currentUserId) : false;
+
+    if (!isOwner) {
+      const privacy = await this.privacySettingsRepo.findOne({ where: { userId } });
+      if (privacy && (privacy.canSeeStats === PrivacyLevel.NOBODY || (privacy.canSeeStats === PrivacyLevel.FRIENDS && !isFriend))) {
+        return [];
+      }
+    }
+
     const stats = await this.playerStatsRepo.find({ where: { userId } });
     const teamMemberships = await this.getTeamMemberships([userId]);
 
@@ -659,9 +724,19 @@ export class UsersService {
     return { message: 'Unfollowed successfully' };
   }
 
-  async getFollowers(userId: string, page: number = 1, limit: number = 20) {
+  async getFollowers(userId: string, page: number = 1, limit: number = 20, currentUserId?: string) {
     const skip = (page - 1) * limit;
     
+    const isOwner = currentUserId === userId;
+    const isFriend = currentUserId && !isOwner ? await this.areFriends(userId, currentUserId) : false;
+
+    if (!isOwner) {
+      const privacy = await this.privacySettingsRepo.findOne({ where: { userId } });
+      if (privacy && (privacy.canSeeFriends === PrivacyLevel.NOBODY || (privacy.canSeeFriends === PrivacyLevel.FRIENDS && !isFriend))) {
+        return { data: [], total: 0, page, totalPages: 0 };
+      }
+    }
+
     const [follows, total] = await this.followsRepo.findAndCount({
       where: { followingId: userId },
       relations: ['follower'],
@@ -683,9 +758,19 @@ export class UsersService {
     };
   }
 
-  async getFollowing(userId: string, page: number = 1, limit: number = 20) {
+  async getFollowing(userId: string, page: number = 1, limit: number = 20, currentUserId?: string) {
     const skip = (page - 1) * limit;
     
+    const isOwner = currentUserId === userId;
+    const isFriend = currentUserId && !isOwner ? await this.areFriends(userId, currentUserId) : false;
+
+    if (!isOwner) {
+      const privacy = await this.privacySettingsRepo.findOne({ where: { userId } });
+      if (privacy && (privacy.canSeeFriends === PrivacyLevel.NOBODY || (privacy.canSeeFriends === PrivacyLevel.FRIENDS && !isFriend))) {
+        return { data: [], total: 0, page, totalPages: 0 };
+      }
+    }
+
     const [follows, total] = await this.followsRepo.findAndCount({
       where: { followerId: userId },
       relations: ['following'],
@@ -737,6 +822,11 @@ export class UsersService {
     // Только владелец профиля может видеть посетителей
     if (profileId !== currentUserId) {
       throw new BadRequestException('Вы можете видеть только посетителей своего профиля');
+    }
+
+    const privacy = await this.privacySettingsRepo.findOne({ where: { userId: profileId } });
+    if (privacy && !privacy.showProfileVisitors) {
+      return { total: 0, views: [] };
     }
 
     // Получаем посетителей за последний месяц

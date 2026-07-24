@@ -154,7 +154,7 @@ export default function TeamDetailPage() {
   };
 
   // Roles verification helper
-  const myMembership = team?.members?.find((m) => m.userId === currentUser?.id);
+  const myMembership = team?.members?.find((m) => m.user.id === currentUser?.id);
   const myRole = myMembership?.role;
   const isCaptain = team?.captainId === currentUser?.id || myRole === 'captain';
   const isViceCaptain = myRole === 'vice_captain';

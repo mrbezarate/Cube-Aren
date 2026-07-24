@@ -20,16 +20,33 @@ interface FiltersState {
   showAll: boolean;
 }
 
-function sortByFavorites(
+import { usePreferencesStore } from '@/lib/store/preferences.store';
+
+function filterAndSortTournaments(
   tournaments: Tournament[],
   favoriteGames: string[],
   showAll: boolean,
   gameFilter: string,
+  preferences: { hideUninterestingTournaments?: boolean; minPrizePoolFilter?: number }
 ): Tournament[] {
-  if (!favoriteGames.length || showAll || gameFilter) return tournaments;
+  let filtered = tournaments;
 
-  const favorites = tournaments.filter((t) => favoriteGames.includes(t.game));
-  const others = tournaments.filter((t) => !favoriteGames.includes(t.game));
+  // Filter uninteresting
+  if (preferences.hideUninterestingTournaments && !showAll && !gameFilter) {
+    if (favoriteGames.length > 0) {
+      filtered = filtered.filter(t => favoriteGames.includes(t.game));
+    }
+  }
+
+  // Filter min prize pool
+  if ((preferences.minPrizePoolFilter || 0) > 0) {
+    filtered = filtered.filter(t => (t.prizePool || 0) >= (preferences.minPrizePoolFilter || 0));
+  }
+
+  if (!favoriteGames.length || showAll || gameFilter) return filtered;
+
+  const favorites = filtered.filter((t) => favoriteGames.includes(t.game));
+  const others = filtered.filter((t) => !favoriteGames.includes(t.game));
 
   const byDate = (a: Tournament, b: Tournament) =>
     new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
@@ -39,6 +56,7 @@ function sortByFavorites(
 
 export default function TournamentsListPage() {
   const { user, isAuthenticated } = useAuthStore();
+  const preferences = usePreferencesStore((s) => s.preferences);
   const { t } = useTranslation();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [favoriteGames, setFavoriteGames] = useState<string[]>([]);
@@ -81,7 +99,7 @@ export default function TournamentsListPage() {
         limit: 12,
       });
 
-      const sorted = sortByFavorites(res.data, favoriteGames, filters.showAll, filters.game);
+      const sorted = filterAndSortTournaments(res.data, favoriteGames, filters.showAll, filters.game, preferences);
       setTournaments(sorted);
       setTotalPages(res.pages);
     } catch (err) {
@@ -89,7 +107,7 @@ export default function TournamentsListPage() {
     } finally {
       setLoading(false);
     }
-  }, [filters, page, favoriteGames]);
+  }, [filters, page, favoriteGames, preferences]);
 
   useEffect(() => {
     fetchTournaments();

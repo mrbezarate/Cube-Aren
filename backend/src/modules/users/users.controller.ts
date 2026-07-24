@@ -103,9 +103,10 @@ export class UsersController {
 
   // ========== PROFILE ENDPOINTS ==========
   @Get(':id/profile')
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Get user full profile with stats' })
-  getProfile(@Param('id') id: string) {
-    return this.usersService.getProfile(id);
+  getProfile(@Param('id') id: string, @CurrentUser('id') currentUserId?: string) {
+    return this.usersService.getProfile(id, currentUserId);
   }
 
   @Patch('profile')
@@ -155,15 +156,17 @@ export class UsersController {
 
   // ========== STATS & LEADERBOARD ENDPOINTS ==========
   @Get(':id/stats')
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Get all player stats (all games)' })
-  getAllStats(@Param('id') id: string) {
-    return this.usersService.getAllPlayerStats(id);
+  getAllStats(@Param('id') id: string, @CurrentUser('id') currentUserId?: string) {
+    return this.usersService.getAllPlayerStats(id, currentUserId);
   }
 
   @Get(':id/stats/:game')
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Get player stats for specific game' })
-  getStats(@Param('id') id: string, @Param('game') game: GameType) {
-    return this.usersService.getPlayerStats(id, game);
+  getStats(@Param('id') id: string, @Param('game') game: GameType, @CurrentUser('id') currentUserId?: string) {
+    return this.usersService.getPlayerStats(id, game, currentUserId);
   }
 
   @Get('leaderboard/:game')
@@ -198,6 +201,7 @@ export class UsersController {
   }
 
   @Get(':id/followers')
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Get user followers' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -205,11 +209,13 @@ export class UsersController {
     @Param('id') id: string,
     @Query('page') page?: number,
     @Query('limit') limit?: number,
+    @CurrentUser('id') currentUserId?: string,
   ) {
-    return this.usersService.getFollowers(id, page || 1, limit || 20);
+    return this.usersService.getFollowers(id, page || 1, limit || 20, currentUserId);
   }
 
   @Get(':id/following')
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Get users this user is following' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -217,8 +223,9 @@ export class UsersController {
     @Param('id') id: string,
     @Query('page') page?: number,
     @Query('limit') limit?: number,
+    @CurrentUser('id') currentUserId?: string,
   ) {
-    return this.usersService.getFollowing(id, page || 1, limit || 20);
+    return this.usersService.getFollowing(id, page || 1, limit || 20, currentUserId);
   }
 
   @Get(':id/is-following/:targetId')

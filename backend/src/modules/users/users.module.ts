@@ -10,6 +10,7 @@ import { Follow } from '../../entities/follow.entity';
 import { Team } from '../../entities/team.entity';
 import { TeamMember } from '../../entities/team-member.entity';
 import { ProfileView } from '../../entities/profile-view.entity';
+import { PrivacySettings } from '../../entities/privacy-settings.entity';
 import { AuthModule } from '../auth/auth.module';
 
 @Module({
@@ -23,6 +24,7 @@ import { AuthModule } from '../auth/auth.module';
       Team,
       TeamMember,
       ProfileView,
+      PrivacySettings,
     ]),
     forwardRef(() => AuthModule),
   ],
