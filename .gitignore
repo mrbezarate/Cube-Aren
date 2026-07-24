@@ -35,6 +35,3 @@ dist/
 # Системные файлы ОС
 Thumbs.db
 .DS_Store
-
-# Агенты
-AGENTS.md
