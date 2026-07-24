@@ -1,12 +1,12 @@
 'use client';
 
 import React, { Suspense, useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useSocket } from '@/lib/hooks/useSocket';
 import { useAuthStore } from '@/lib/store/auth.store';
 import { api } from '@/lib/api';
 import { toast } from 'react-hot-toast';
-import { Send, Users, MessageCircle, ArrowLeft, MoreVertical, Edit2, Trash2, X } from 'lucide-react';
+import { Send, Users, MessageCircle, ArrowLeft, Edit2, Trash2, X, ShieldAlert, Check } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Avatar from '@/components/ui/Avatar';
 import Modal from '@/components/ui/Modal';
@@ -53,6 +53,7 @@ interface Friend {
 }
 
 function ChatPageContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const roomIdFromUrl = searchParams.get('room');
   const { isAuthenticated, user } = useAuthStore();
@@ -79,15 +80,33 @@ function ChatPageContent() {
     }
   }, [isAuthenticated]);
 
-  // Автоматически открываем комнату из URL
   useEffect(() => {
-    if (roomIdFromUrl && rooms.length > 0 && !selectedRoom) {
-      const room = rooms.find(r => r.id === roomIdFromUrl);
-      if (room) {
-        handleSelectRoom(room);
+    const loadUrlRoom = async () => {
+      if (roomIdFromUrl && !selectedRoom && !loadingRoom) {
+        let room = rooms.find(r => r.id === roomIdFromUrl);
+        if (room) {
+          handleSelectRoom(room);
+        } else if (rooms.length > 0) {
+          try {
+            setLoadingRoom(true);
+            const fetchedRoom = await api.chat.getRoom(roomIdFromUrl);
+            const mappedRoom: ChatRoom = {
+              id: fetchedRoom.id,
+              companion: fetchedRoom.user1Id === user?.id ? fetchedRoom.user2 : fetchedRoom.user1,
+              unreadCount: 0
+            };
+            setRooms(prev => [...prev, mappedRoom]);
+            handleSelectRoom(mappedRoom);
+          } catch (err) {
+            console.error('Room not found', err);
+          } finally {
+            setLoadingRoom(false);
+          }
+        }
       }
-    }
-  }, [roomIdFromUrl, rooms, selectedRoom]);
+    };
+    loadUrlRoom();
+  }, [roomIdFromUrl, rooms.length]); // depend on rooms.length so it runs after rooms load
 
   useEffect(() => {
     if (socket && isConnected) {
@@ -127,7 +146,6 @@ function ChatPageContent() {
       });
 
       socket.on('messages_read', (data: { roomId: string }) => {
-        // Помечаем все сообщения в комнате как прочитанные
         if (selectedRoom && selectedRoom.id === data.roomId) {
           setMessages((prev) =>
             prev.map((msg) => ({
@@ -141,16 +159,6 @@ function ChatPageContent() {
       socket.on('message_edited', (editedMessage: Message) => {
         setMessages((prev) =>
           prev.map((msg) => (msg.id === editedMessage.id ? editedMessage : msg))
-        );
-        // Обновить lastMessage если нужно
-        setRooms((prev) =>
-          prev.map((room) => {
-            if (room.id === editedMessage.roomId || (selectedRoom && selectedRoom.id === room.id)) {
-               // Только если это последнее сообщение, но мы просто обновим для надежности
-               // Это сложно проверить без полного массива, так что пока так
-            }
-            return room;
-          })
         );
       });
 
@@ -193,17 +201,13 @@ function ChatPageContent() {
   };
 
   const handleSelectFriend = async (friend: Friend) => {
-    // Проверяем есть ли уже комната с этим другом
     const existingRoom = rooms.find(r => r.companion.id === friend.id);
-    
     if (existingRoom) {
-      // Если комната уже есть, открываем её
       handleSelectRoom(existingRoom);
       setSelectedFriend(friend);
       return;
     }
 
-    // Создаём или получаем комнату
     try {
       setLoadingRoom(true);
       setSelectedFriend(friend);
@@ -212,32 +216,19 @@ function ChatPageContent() {
       
       const room = await api.chat.getOrCreateRoom(friend.id);
       
-      // Добавляем комнату в список если её там нет
-      setRooms(prev => {
-        const exists = prev.find(r => r.id === room.id);
-        if (exists) return prev;
-        
-        return [...prev, {
-          id: room.id,
-          companion: friend,
-          unreadCount: 0,
-        }];
-      });
-      
-      // Открываем комнату
       const chatRoom: ChatRoom = {
         id: room.id,
         companion: friend,
         unreadCount: 0,
       };
       
-      setSelectedRoom(chatRoom);
+      setRooms(prev => {
+        if (prev.find(r => r.id === room.id)) return prev;
+        return [...prev, chatRoom];
+      });
       
-      if (socket && isConnected) {
-        socket.emit('join_room', { roomId: room.id });
-      }
+      handleSelectRoom(chatRoom);
     } catch (err: any) {
-      console.error('Failed to create room:', err);
       toast.error(err.response?.data?.message || 'Ошибка создания чата');
       setSelectedFriend(null);
     } finally {
@@ -246,28 +237,29 @@ function ChatPageContent() {
   };
 
   const handleSelectRoom = (room: ChatRoom) => {
-    // Останавливаем печатание в предыдущей комнате
     if (socket && isConnected && selectedRoom) {
-      socket.emit('typing', {
-        roomId: selectedRoom.id,
-        isTyping: false,
-      });
+      socket.emit('typing', { roomId: selectedRoom.id, isTyping: false });
     }
 
     setSelectedRoom(room);
     setMessages([]);
     setIsTyping(false);
-    setNewMessage(''); // Очищаем поле ввода
+    setNewMessage(''); 
 
     if (socket && isConnected) {
       socket.emit('join_room', { roomId: room.id });
       socket.emit('mark_as_read', { roomId: room.id });
     }
 
-    // Обновляем счетчик непрочитанных
     setRooms((prev) =>
       prev.map((r) => (r.id === room.id ? { ...r, unreadCount: 0 } : r))
     );
+  };
+
+  const handleBack = () => {
+    setSelectedRoom(null);
+    setSelectedFriend(null);
+    router.replace('/chat');
   };
 
   const handleSendMessage = () => {
@@ -279,27 +271,19 @@ function ChatPageContent() {
         messageId: editingMessageId,
         content: newMessage.trim(),
       }, (response: any) => {
-        if (response?.error) {
-          toast.error(response.error);
-        }
+        if (response?.error) toast.error(response.error);
       });
       setEditingMessageId(null);
       setNewMessage('');
       return;
     }
 
-    // Отправляем сообщение
     socket.emit('send_message', {
       roomId: selectedRoom.id,
       content: newMessage.trim(),
     }, (response: any) => {
-      // Обработка ответа от сервера
       if (response?.error) {
-        if (response.error.includes('Слишком частые')) {
-          toast.error(response.error, { duration: 3000 });
-        } else {
-          toast.error('Ошибка отправки сообщения');
-        }
+        toast.error(response.error);
       }
     });
 
@@ -321,7 +305,7 @@ function ChatPageContent() {
     socket.emit('delete_message', { 
       roomId: selectedRoom.id, 
       messageId: deletingMessageId,
-      deleteForBoth // Pass the flag to backend if supported, but for now we just show the checkbox in UI as requested by user
+      deleteForBoth
     }, (response: any) => {
       if (response?.error) {
         toast.error(response.error);
@@ -345,55 +329,26 @@ function ChatPageContent() {
 
   const handleTyping = (value: string) => {
     setNewMessage(value);
-    
     if (socket && isConnected && selectedRoom) {
       const isCurrentlyTyping = value.length > 0;
-      
-      socket.emit('typing', {
-        roomId: selectedRoom.id,
-        isTyping: isCurrentlyTyping,
-      });
+      socket.emit('typing', { roomId: selectedRoom.id, isTyping: isCurrentlyTyping });
 
-      // Автоматически отключаем "печатает" через 3 секунды
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       if (isCurrentlyTyping) {
         typingTimeoutRef.current = setTimeout(() => {
-          socket.emit('typing', {
-            roomId: selectedRoom.id,
-            isTyping: false,
-          });
+          socket.emit('typing', { roomId: selectedRoom.id, isTyping: false });
         }, 3000);
       }
     }
   };
 
-  // Останавливаем индикатор печатания при выходе из комнаты
   useEffect(() => {
     return () => {
-      // Очищаем таймер
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-      
-      // При размонтировании компонента или смене комнаты отправляем что перестали печатать
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       if (socket && isConnected && selectedRoom) {
-        socket.emit('typing', {
-          roomId: selectedRoom.id,
-          isTyping: false,
-        });
+        socket.emit('typing', { roomId: selectedRoom.id, isTyping: false });
       }
     };
-  }, [socket, isConnected, selectedRoom]);
-
-  // Присоединяемся к комнате когда сокет подключается или комната меняется
-  useEffect(() => {
-    if (socket && isConnected && selectedRoom) {
-      socket.emit('join_room', { roomId: selectedRoom.id });
-      socket.emit('mark_as_read', { roomId: selectedRoom.id });
-    }
   }, [socket, isConnected, selectedRoom]);
 
   const scrollToBottom = () => {
@@ -411,68 +366,71 @@ function ChatPageContent() {
   }
 
   return (
-    <div className="h-[calc(100vh-64px)] flex">
-      {/* Left Sidebar - Friends List (Contacts) */}
-      <div className={`${selectedRoom ? 'hidden lg:flex' : 'flex'} w-full lg:w-80 flex-col border-r border-arena-border bg-arena-card`}>
-        <div className="p-6 border-b border-arena-border">
-          <h2 className="font-orbitron font-bold text-xl text-white flex items-center gap-3">
-            <Users className="w-6 h-6 text-neon-purple" />
-            Друзья
+    <div className="h-[calc(100vh-64px)] flex bg-[#0a0a0c]">
+      {/* Left Sidebar - Contacts List */}
+      <div className={`${selectedRoom ? 'hidden lg:flex' : 'flex'} w-full lg:w-80 flex-col bg-[#0d0d12] border-r border-zinc-800/80`}>
+        <div className="p-6 bg-zinc-900/50 border-b border-zinc-800/80 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-yellow-600 to-transparent" />
+          <h2 className="font-orbitron font-black text-xl text-white uppercase tracking-widest flex items-center gap-3">
+            <Users className="w-5 h-5 text-yellow-600" />
+            Контакты
           </h2>
-          <p className="text-xs text-gray-400 mt-2">
-            {isConnected ? '🟢 Подключено' : '🔴 Не подключено'}
-          </p>
+          <div className="flex items-center gap-2 mt-2">
+            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 shadow-[0_0_10px_#22c55e]' : 'bg-red-500 shadow-[0_0_10px_#ef4444]'}`} />
+            <span className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">
+              {isConnected ? 'Сеть стабильна' : 'Соединение разорвано'}
+            </span>
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
           {loading ? (
             <div className="p-8 text-center">
-              <div className="w-10 h-10 border-4 border-neon-purple border-t-transparent rounded-full animate-spin mx-auto" />
+              <div className="w-8 h-8 border-2 border-yellow-600 border-t-transparent rounded-full animate-spin mx-auto" />
             </div>
           ) : friends.length === 0 ? (
             <div className="p-8 text-center">
-              <Users className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-              <p className="text-gray-300 text-base font-medium">Нет друзей</p>
-              <p className="text-sm text-gray-500 mt-2">Добавьте друзей чтобы начать общение</p>
+              <ShieldAlert className="w-12 h-12 text-zinc-700 mx-auto mb-4" />
+              <p className="text-zinc-400 font-bold uppercase text-xs tracking-widest">Нет союзников</p>
             </div>
           ) : (
             friends.map((friend) => {
-              // Ищем комнату с этим другом для показа счётчика непрочитанных
               const room = rooms.find(r => r.companion.id === friend.id);
-              const isActive = selectedFriend?.id === friend.id;
+              const isActive = selectedRoom?.companion.id === friend.id;
               
               return (
                 <button
                   key={friend.id}
                   onClick={() => handleSelectFriend(friend)}
-                  className={`w-full p-4 flex items-center gap-3 hover:bg-arena-dark/30 transition-all border-b border-arena-border/30 relative overflow-hidden group ${
-                    isActive ? 'bg-neon-purple/15 border-l-4 border-l-neon-purple' : ''
+                  className={`w-full p-4 flex items-center gap-4 transition-all relative group text-left ${
+                    isActive ? 'bg-zinc-800/50' : 'hover:bg-zinc-900'
                   }`}
-                  style={
-                    friend.cardBannerUrl
-                      ? {
-                          backgroundImage: `linear-gradient(90deg, rgba(17, 17, 25, 0.96) 0%, rgba(17, 17, 25, 0.88) 100%), url(${friend.cardBannerUrl})`,
-                          backgroundSize: 'cover',
-                          backgroundPosition: 'center',
-                        }
-                      : undefined
-                  }
+                  style={{
+                    clipPath: 'polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px)',
+                    backgroundImage: friend.cardBannerUrl && isActive
+                      ? `linear-gradient(90deg, rgba(13,13,18,0.95) 0%, rgba(13,13,18,0.7) 100%), url(${friend.cardBannerUrl})`
+                      : 'none',
+                    backgroundSize: 'cover',
+                  }}
                 >
-                  <div className="relative flex-shrink-0">
-                    <Avatar src={friend.avatarUrl} alt={friend.displayName || friend.username} className="w-12 h-12" />
+                  <div className={`absolute left-0 top-0 bottom-0 w-1 transition-colors ${isActive ? 'bg-yellow-600' : 'bg-transparent group-hover:bg-zinc-700'}`} />
+                  
+                  <div className="relative shrink-0">
+                    <Avatar src={friend.avatarUrl} alt={friend.displayName || friend.username} className="w-12 h-12 rounded-none border border-zinc-700 [clip-path:polygon(0_0,100%_0,100%_80%,80%_100%,0_100%)]" />
                     {room && room.unreadCount > 0 && (
-                      <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 border-2 border-arena-card flex items-center justify-center animate-pulse">
-                        <span className="text-white text-[9px] font-bold">{room.unreadCount}</span>
+                      <div className="absolute -top-1 -right-1 bg-yellow-600 text-black text-[10px] font-black px-1.5 py-0.5" style={{ clipPath: 'polygon(3px 0, 100% 0, 100% calc(100% - 3px), calc(100% - 3px) 100%, 0 100%, 0 3px)' }}>
+                        {room.unreadCount}
                       </div>
                     )}
                   </div>
-                  <div className="flex-1 text-left min-w-0">
-                    <p className="font-orbitron font-bold text-sm text-white truncate">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-orbitron font-bold text-sm text-white truncate uppercase tracking-wide group-hover:text-yellow-500 transition-colors">
                       {friend.displayName || friend.username}
                     </p>
-                    <p className="text-xs text-gray-400 truncate">@{friend.username}</p>
                     {room?.lastMessage && (
-                      <p className="text-xs text-gray-500 truncate mt-0.5">{room.lastMessage}</p>
+                      <p className={`text-[11px] truncate mt-1 font-mono ${room.unreadCount > 0 ? 'text-yellow-600 font-bold' : 'text-zinc-500'}`}>
+                        {room.lastMessage}
+                      </p>
                     )}
                   </div>
                 </button>
@@ -482,119 +440,90 @@ function ChatPageContent() {
         </div>
       </div>
 
-      {/* Right Panel - Chat Window */}
+      {/* Right Panel - Chat Area */}
       {selectedRoom || loadingRoom ? (
-        <div className="flex-1 flex flex-col bg-arena-dark">
+        <div className="flex-1 flex flex-col relative bg-[#111116] overflow-hidden">
           {loadingRoom ? (
             <div className="flex-1 flex items-center justify-center">
-              <div className="text-center">
-                <div className="w-12 h-12 border-4 border-neon-purple border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-gray-400">Загрузка чата...</p>
-              </div>
+              <div className="w-8 h-8 border-2 border-yellow-600 border-t-transparent rounded-full animate-spin" />
             </div>
           ) : selectedRoom ? (
             <>
-              {/* Chat Header */}
+              {/* Header */}
               <div
-                className="p-5 border-b border-arena-border flex items-center gap-4 bg-arena-card/80 backdrop-blur-sm relative overflow-hidden"
-                style={
-                  selectedRoom.companion.cardBannerUrl
-                    ? {
-                        backgroundImage: `linear-gradient(90deg, rgba(17, 17, 25, 0.9) 0%, rgba(17, 17, 25, 0.75) 100%), url(${selectedRoom.companion.cardBannerUrl})`,
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                      }
-                    : undefined
-                }
+                className="px-6 py-4 border-b border-zinc-800/80 flex items-center gap-4 relative z-10"
+                style={{
+                  backgroundImage: selectedRoom.companion.cardBannerUrl
+                    ? `linear-gradient(90deg, rgba(17,17,22,1) 0%, rgba(17,17,22,0.6) 100%), url(${selectedRoom.companion.cardBannerUrl})`
+                    : 'none',
+                  backgroundSize: 'cover',
+                }}
               >
+                <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10 mix-blend-overlay" />
                 <button
-                  onClick={() => {
-                    setSelectedRoom(null);
-                    setSelectedFriend(null);
-                  }}
-                  className="lg:hidden text-gray-400 hover:text-white transition-colors"
+                  onClick={handleBack}
+                  className="lg:hidden p-2 text-zinc-400 hover:text-white bg-black border border-zinc-800 transition-colors"
+                  style={{ clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)' }}
                 >
-                  <ArrowLeft className="w-6 h-6" />
+                  <ArrowLeft className="w-5 h-5" />
                 </button>
-                <Avatar src={selectedRoom.companion.avatarUrl} alt={selectedRoom.companion.displayName || selectedRoom.companion.username} className="w-12 h-12" />
-                <div className="flex-1">
-                  <p className="font-orbitron font-bold text-base text-white">
+                <Avatar src={selectedRoom.companion.avatarUrl} alt={selectedRoom.companion.displayName || selectedRoom.companion.username} className="w-10 h-10 rounded-none border border-zinc-700 shrink-0 [clip-path:polygon(0_0,100%_0,100%_80%,80%_100%,0_100%)]" />
+                <div className="flex-1 relative z-10">
+                  <p className="font-orbitron font-black text-lg text-white uppercase tracking-widest drop-shadow-md">
                     {selectedRoom.companion.displayName || selectedRoom.companion.username}
                   </p>
                   {isTyping && (
-                    <p className="text-sm text-neon-blue animate-pulse">печатает...</p>
+                    <p className="text-[10px] text-yellow-600 font-mono uppercase tracking-widest animate-pulse mt-0.5">Приём данных...</p>
                   )}
                 </div>
               </div>
 
-              {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-arena-dark to-arena-dark/50">
+              {/* Messages Area */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 relative z-0">
                 {messages.length === 0 ? (
                   <div className="flex items-center justify-center h-full">
-                    <div className="text-center">
-                      <MessageCircle className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                      <p className="text-gray-400 font-medium">Начните общение</p>
-                      <p className="text-sm text-gray-500 mt-1">Отправьте первое сообщение</p>
+                    <div className="text-center opacity-50">
+                      <MessageCircle className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
+                      <p className="text-zinc-500 font-orbitron font-bold uppercase tracking-widest text-xs">Канал связи открыт</p>
                     </div>
                   </div>
                 ) : (
-                  messages.map((message) => {
+                  messages.map((message, i) => {
                     const isOwn = message.senderId === user.id;
+                    const prevMsg = i > 0 ? messages[i-1] : null;
+                    const isConsecutive = prevMsg && prevMsg.senderId === message.senderId;
+                    
                     return (
-                      <div key={message.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'} animate-fadeIn`}>
+                      <div key={message.id} className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'} ${isConsecutive ? '-mt-4' : ''} animate-fadeIn`}>
                         <div className={`group relative max-w-[85%] md:max-w-[70%] ${
                           isOwn 
-                            ? 'bg-gradient-to-br from-neon-purple to-neon-purple/80 text-white shadow-neon-purple/20' 
-                            : 'bg-arena-card/80 backdrop-blur-sm border-arena-border/50 text-gray-200 shadow-black/20'
-                        } border rounded-2xl px-5 py-3 shadow-lg flex flex-col`}>
+                            ? 'bg-gradient-to-br from-yellow-600/10 to-transparent border border-yellow-600/30' 
+                            : 'bg-zinc-900 border border-zinc-800'
+                        } px-4 py-3 shadow-lg`}
+                        style={{ clipPath: isOwn ? 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)' : 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))' }}>
                           
-                          {/* Dropdown menu for own messages */}
                           {isOwn && (
-                            <div className="absolute top-2 -left-12 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
-                              <button onClick={() => handleEditInit(message)} className="p-1.5 bg-arena-card border border-arena-border rounded-full hover:bg-arena-dark text-gray-400 hover:text-white transition-colors" title="Редактировать">
-                                <Edit2 className="w-4 h-4" />
+                            <div className="absolute top-2 -left-16 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                              <button onClick={() => handleEditInit(message)} className="p-1.5 bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-500 transition-colors" style={{ clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)' }}>
+                                <Edit2 className="w-3 h-3" />
                               </button>
-                              <button onClick={() => handleDelete(message.id)} className="p-1.5 bg-arena-card border border-arena-border rounded-full hover:bg-red-500/20 text-gray-400 hover:text-red-500 transition-colors" title="Удалить">
-                                <Trash2 className="w-4 h-4" />
+                              <button onClick={() => handleDelete(message.id)} className="p-1.5 bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-red-500 hover:border-red-900/50 transition-colors" style={{ clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)' }}>
+                                <Trash2 className="w-3 h-3" />
                               </button>
                             </div>
                           )}
                           
-                          <p className={`text-base break-words leading-relaxed ${isOwn ? 'text-white' : 'text-gray-200'}`}>{message.content}</p>
+                          <p className={`text-sm break-words font-mono ${isOwn ? 'text-zinc-200' : 'text-zinc-300'}`}>{message.content}</p>
+                          
                           <div className="flex items-center justify-end gap-2 mt-2">
-                            <div className="flex items-center gap-1">
-                              {message.isEdited && (
-                                <span className={`text-[10px] italic mr-1 ${isOwn ? 'text-white/70' : 'text-gray-400'}`}>ред.</span>
-                              )}
-                              <p className={`text-[11px] ${isOwn ? 'text-white/70' : 'text-gray-500'}`}>
-                                {new Date(message.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-                              </p>
-                            </div>
+                            {message.isEdited && <span className="text-[9px] uppercase tracking-widest text-zinc-600 font-bold">Ред.</span>}
+                            <span className="text-[10px] text-zinc-500 font-mono">
+                              {new Date(message.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
                             {isOwn && (
-                              <div className="flex items-center gap-0.5">
-                                {message.isRead ? (
-                                  <>
-                                    <svg className={`w-4 h-4 ${isOwn ? 'text-white' : 'text-green-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                    </svg>
-                                    <svg className={`w-4 h-4 ${isOwn ? 'text-white' : 'text-green-400'} -ml-2`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                    </svg>
-                                  </>
-                                ) : message.isDelivered ? (
-                                  <>
-                                    <svg className={`w-4 h-4 ${isOwn ? 'text-white/70' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                    </svg>
-                                    <svg className={`w-4 h-4 ${isOwn ? 'text-white/70' : 'text-gray-400'} -ml-2`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                    </svg>
-                                  </>
-                                ) : (
-                                  <svg className={`w-4 h-4 ${isOwn ? 'text-white/50' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                  </svg>
-                                )}
+                              <div className="flex -space-x-1">
+                                <Check className={`w-3 h-3 ${message.isDelivered || message.isRead ? 'text-yellow-600' : 'text-zinc-600'}`} />
+                                <Check className={`w-3 h-3 ${message.isRead ? 'text-yellow-600' : 'text-transparent'}`} />
                               </div>
                             )}
                           </div>
@@ -606,92 +535,89 @@ function ChatPageContent() {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Input */}
-              <div className="p-5 border-t border-arena-border bg-arena-card/80 backdrop-blur-sm flex flex-col gap-2">
+              {/* Input Area */}
+              <div className="p-4 bg-zinc-900 border-t border-zinc-800 relative z-10">
                 {editingMessageId && (
-                  <div className="flex items-center justify-between text-sm text-gray-400 bg-arena-dark px-4 py-2 rounded-lg border border-arena-border">
-                    <div className="flex items-center gap-2">
-                      <Edit2 className="w-4 h-4 text-neon-purple" />
-                      <span>Редактирование сообщения</span>
-                    </div>
-                    <button onClick={cancelEdit} className="hover:text-white transition-colors">
+                  <div className="absolute -top-10 left-0 w-full px-4 flex justify-between items-center bg-black/80 backdrop-blur-sm border-t border-yellow-600/30 py-2">
+                    <span className="text-[10px] text-yellow-600 font-orbitron font-bold uppercase tracking-widest flex items-center gap-2">
+                      <Edit2 className="w-3 h-3" /> Режим изменения
+                    </span>
+                    <button onClick={cancelEdit} className="text-zinc-500 hover:text-white transition-colors">
                       <X className="w-4 h-4" />
                     </button>
                   </div>
                 )}
-                <div className="flex gap-3">
-                  <input
-                    type="text"
+                <div className="flex gap-3 max-w-5xl mx-auto items-end">
+                  <textarea
                     value={newMessage}
                     onChange={(e) => handleTyping(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="Напишите сообщение..."
-                    className="flex-1 px-5 py-3.5 rounded-xl glass-input text-base focus:ring-2 focus:ring-neon-purple/50 transition-all"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage();
+                      }
+                    }}
+                    placeholder="КОД СООБЩЕНИЯ..."
+                    className="flex-1 bg-black border border-zinc-800 text-sm text-white px-4 py-3 min-h-[48px] max-h-32 focus:border-yellow-600 focus:outline-none transition-colors resize-none font-mono"
+                    style={{ clipPath: 'polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)' }}
                     disabled={!isConnected}
+                    rows={1}
                   />
-                  <Button
+                  <button
                     onClick={handleSendMessage}
                     disabled={!newMessage.trim() || !isConnected}
-                    variant="primary"
-                    className="px-6 py-3.5 rounded-xl"
+                    className="shrink-0 bg-yellow-600 hover:bg-yellow-500 text-black px-5 py-3 h-[48px] font-black uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center shadow-[0_0_15px_rgba(202,138,4,0.3)]"
+                    style={{ clipPath: 'polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)' }}
                   >
                     <Send className="w-5 h-5" />
-                  </Button>
+                  </button>
                 </div>
               </div>
             </>
           ) : null}
         </div>
       ) : (
-        <div className="hidden lg:flex flex-1 items-center justify-center bg-gradient-to-br from-arena-dark via-arena-dark to-neon-purple/5">
-          <div className="text-center">
-            <MessageCircle className="w-20 h-20 text-gray-600 mx-auto mb-6" />
-            <p className="text-gray-300 font-orbitron font-bold text-lg">Выберите друга</p>
-            <p className="text-sm text-gray-500 mt-2">Выберите друга из списка слева чтобы начать общение</p>
+        <div className="hidden lg:flex flex-1 items-center justify-center bg-[#0a0a0c] bg-[url('/grid.svg')] bg-center relative">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" />
+          <div className="text-center relative z-10">
+            <MessageCircle className="w-16 h-16 text-zinc-800 mx-auto mb-6" />
+            <p className="text-zinc-500 font-orbitron font-black text-xl uppercase tracking-widest">Канал не выбран</p>
+            <p className="text-xs text-zinc-600 mt-2 font-mono uppercase">Ожидание подключения к узлу связи</p>
           </div>
         </div>
       )}
 
-      {/* Delete Message Modal */}
-      <Modal
-        isOpen={!!deletingMessageId}
-        onClose={() => setDeletingMessageId(null)}
-        title="Удаление сообщения"
-      >
-        <div className="space-y-4">
-          <p className="text-gray-300">
-            Вы уверены, что хотите удалить это сообщение?
-          </p>
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="deleteForBoth"
-              checked={deleteForBoth}
-              onChange={(e) => setDeleteForBoth(e.target.checked)}
-              className="w-4 h-4 rounded border-arena-border bg-arena-dark text-neon-purple focus:ring-neon-purple focus:ring-offset-arena-card"
-            />
-            <label htmlFor="deleteForBoth" className="text-sm text-gray-400 select-none cursor-pointer">
-              Удалить у обоих
+      {/* Modern Game-like Delete Modal */}
+      {deletingMessageId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-[#111116] border border-red-900/50 p-8 max-w-sm w-full shadow-[0_0_50px_rgba(220,38,38,0.1)]" style={{ clipPath: 'polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px)' }}>
+            <h3 className="font-orbitron font-black text-lg text-white uppercase tracking-widest mb-4 flex items-center gap-3">
+              <ShieldAlert className="w-6 h-6 text-red-500" /> Уничтожение данных
+            </h3>
+            
+            <p className="text-sm text-zinc-400 font-mono mb-6">
+              Вы уверены, что хотите безвозвратно удалить эту передачу?
+            </p>
+            
+            <label className="flex items-center gap-3 cursor-pointer mb-8 group">
+              <div className={`w-5 h-5 border flex items-center justify-center transition-colors ${deleteForBoth ? 'border-red-500 bg-red-500/20' : 'border-zinc-700 bg-black group-hover:border-zinc-500'}`} style={{ clipPath: 'polygon(3px 0, 100% 0, 100% calc(100% - 3px), calc(100% - 3px) 100%, 0 100%, 0 3px)' }}>
+                {deleteForBoth && <Check className="w-3 h-3 text-red-500" />}
+              </div>
+              <input type="checkbox" checked={deleteForBoth} onChange={(e) => setDeleteForBoth(e.target.checked)} className="hidden" />
+              <span className="text-xs font-bold uppercase tracking-widest text-zinc-300 select-none group-hover:text-white transition-colors">Стереть у обоих агентов</span>
             </label>
-          </div>
-          <div className="flex gap-3 pt-4">
-            <Button
-              variant="secondary"
-              className="flex-1"
-              onClick={() => setDeletingMessageId(null)}
-            >
-              Отмена
-            </Button>
-            <Button
-              variant="primary"
-              className="flex-1 bg-red-500 hover:bg-red-600 border-red-500 text-white"
-              onClick={confirmDelete}
-            >
-              Удалить
-            </Button>
+            
+            <div className="flex gap-4">
+              <button onClick={() => setDeletingMessageId(null)} className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 py-3 text-xs font-black uppercase tracking-widest transition-colors" style={{ clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)' }}>
+                Отмена
+              </button>
+              <button onClick={confirmDelete} className="flex-1 bg-red-900/50 hover:bg-red-600 border border-red-500/50 hover:border-red-500 text-white py-3 text-xs font-black uppercase tracking-widest transition-colors shadow-[0_0_15px_rgba(220,38,38,0.3)]" style={{ clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)' }}>
+                Уничтожить
+              </button>
+            </div>
           </div>
         </div>
-      </Modal>
+      )}
     </div>
   );
 }
@@ -700,8 +626,8 @@ export default function ChatPage() {
   return (
     <Suspense
       fallback={
-        <div className="h-[calc(100vh-64px)] flex items-center justify-center">
-          <div className="w-10 h-10 border-4 border-neon-purple border-t-transparent rounded-full animate-spin" />
+        <div className="h-[calc(100vh-64px)] flex items-center justify-center bg-[#0a0a0c]">
+          <div className="w-10 h-10 border-4 border-yellow-600 border-t-transparent rounded-full animate-spin" />
         </div>
       }
     >
