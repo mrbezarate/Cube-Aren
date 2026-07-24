@@ -26,6 +26,11 @@ export const GAME_LABELS: Record<GameType, string> = {
   lol: 'League of Legends',
   pubg: 'PUBG: BATTLEGROUNDS',
   apex: 'Apex Legends',
+  fortnite: 'Fortnite',
+  rocket_league: 'Rocket League',
+  overwatch2: 'Overwatch 2',
+  rainbow6: 'Rainbow Six Siege',
+  fifa: 'EA SPORTS FC / FIFA',
   custom: 'Общий хаб',
 };
 
@@ -36,6 +41,11 @@ export const GAME_SHORT_LABELS: Record<GameType, string> = {
   lol: 'LoL',
   pubg: 'PUBG',
   apex: 'Apex',
+  fortnite: 'FN',
+  rocket_league: 'RL',
+  overwatch2: 'OW2',
+  rainbow6: 'R6S',
+  fifa: 'FC/FIFA',
   custom: 'Общее',
 };
 
