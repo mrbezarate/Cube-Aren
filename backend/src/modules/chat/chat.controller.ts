@@ -26,7 +26,7 @@ export class ChatController {
   }
 
   @Get('room/:roomId/messages')
-  async getMessages(@Param('roomId') roomId: string) {
-    return this.chatService.getMessages(roomId);
+  async getMessages(@Param('roomId') roomId: string, @Req() req: any) {
+    return this.chatService.getMessages(roomId, req.user.id);
   }
 }
