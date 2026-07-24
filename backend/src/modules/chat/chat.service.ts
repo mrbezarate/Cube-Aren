@@ -208,7 +208,7 @@ export class ChatService {
   }
 
   // Удалить сообщение
-  async deleteMessage(messageId: string, userId: string): Promise<void> {
+  async deleteMessage(messageId: string, userId: string, deleteForBoth: boolean = true): Promise<void> {
     const message = await this.messageRepo.findOne({ where: { id: messageId } });
 
     if (!message) {
@@ -220,7 +220,13 @@ export class ChatService {
     }
 
     const roomId = message.roomId;
-    await this.messageRepo.remove(message);
+    
+    if (deleteForBoth) {
+      await this.messageRepo.remove(message);
+    } else {
+      message.deletedForSender = true;
+      await this.messageRepo.save(message);
+    }
 
     // Обновляем lastMessage в комнате, если мы удалили последнее сообщение
     const latestMessage = await this.messageRepo.findOne({
@@ -235,13 +241,18 @@ export class ChatService {
   }
 
   // Получить сообщения комнаты
-  async getMessages(roomId: string, limit = 50): Promise<Message[]> {
-    return this.messageRepo.find({
-      where: { roomId },
-      relations: ['sender'],
-      order: { createdAt: 'ASC' },
-      take: limit,
-    });
+  async getMessages(roomId: string, userId: string, limit = 50): Promise<Message[]> {
+    const qb = this.messageRepo.createQueryBuilder('message')
+      .leftJoinAndSelect('message.sender', 'sender')
+      .where('message.roomId = :roomId', { roomId })
+      .andWhere(
+        '(message.deletedForSender = false OR message.senderId != :userId)',
+        { userId }
+      )
+      .orderBy('message.createdAt', 'ASC')
+      .take(limit);
+
+    return qb.getMany();
   }
 
   // Отметить сообщения как прочитанные

@@ -9,6 +9,7 @@ import { toast } from 'react-hot-toast';
 import { Send, Users, MessageCircle, ArrowLeft, MoreVertical, Edit2, Trash2, X } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Avatar from '@/components/ui/Avatar';
+import Modal from '@/components/ui/Modal';
 
 interface ChatRoom {
   id: string;
@@ -63,6 +64,8 @@ function ChatPageContent() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
+  const [deleteForBoth, setDeleteForBoth] = useState(true);
   const [loading, setLoading] = useState(true);
   const [loadingRoom, setLoadingRoom] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -309,14 +312,23 @@ function ChatPageContent() {
   };
 
   const handleDelete = (msgId: string) => {
-    if (!selectedRoom || !socket || !isConnected) return;
-    if (confirm('Вы уверены, что хотите удалить сообщение?')) {
-      socket.emit('delete_message', { roomId: selectedRoom.id, messageId: msgId }, (response: any) => {
-        if (response?.error) {
-          toast.error(response.error);
-        }
-      });
-    }
+    setDeletingMessageId(msgId);
+  };
+
+  const confirmDelete = () => {
+    if (!selectedRoom || !socket || !isConnected || !deletingMessageId) return;
+    
+    socket.emit('delete_message', { 
+      roomId: selectedRoom.id, 
+      messageId: deletingMessageId,
+      deleteForBoth // Pass the flag to backend if supported, but for now we just show the checkbox in UI as requested by user
+    }, (response: any) => {
+      if (response?.error) {
+        toast.error(response.error);
+      }
+    });
+    
+    setDeletingMessageId(null);
   };
 
   const cancelEdit = () => {
@@ -374,6 +386,14 @@ function ChatPageContent() {
         });
       }
     };
+  }, [socket, isConnected, selectedRoom]);
+
+  // Присоединяемся к комнате когда сокет подключается или комната меняется
+  useEffect(() => {
+    if (socket && isConnected && selectedRoom) {
+      socket.emit('join_room', { roomId: selectedRoom.id });
+      socket.emit('mark_as_read', { roomId: selectedRoom.id });
+    }
   }, [socket, isConnected, selectedRoom]);
 
   const scrollToBottom = () => {
@@ -522,11 +542,11 @@ function ChatPageContent() {
                     const isOwn = message.senderId === user.id;
                     return (
                       <div key={message.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'} animate-fadeIn`}>
-                        <div className={`group relative max-w-[75%] md:max-w-[60%] ${
+                        <div className={`group relative max-w-[85%] md:max-w-[70%] ${
                           isOwn 
-                            ? 'bg-neon-purple/25 border-neon-purple/50' 
-                            : 'bg-arena-card border-arena-border'
-                        } border rounded-2xl px-4 py-3 shadow-lg flex flex-col`}>
+                            ? 'bg-gradient-to-br from-neon-purple to-neon-purple/80 text-white shadow-neon-purple/20' 
+                            : 'bg-arena-card/80 backdrop-blur-sm border-arena-border/50 text-gray-200 shadow-black/20'
+                        } border rounded-2xl px-5 py-3 shadow-lg flex flex-col`}>
                           
                           {/* Dropdown menu for own messages */}
                           {isOwn && (
@@ -540,41 +560,38 @@ function ChatPageContent() {
                             </div>
                           )}
                           
-                          <p className="text-base text-white break-words leading-relaxed">{message.content}</p>
+                          <p className={`text-base break-words leading-relaxed ${isOwn ? 'text-white' : 'text-gray-200'}`}>{message.content}</p>
                           <div className="flex items-center justify-end gap-2 mt-2">
                             <div className="flex items-center gap-1">
                               {message.isEdited && (
-                                <span className="text-[10px] text-gray-400 mr-1 italic">ред.</span>
+                                <span className={`text-[10px] italic mr-1 ${isOwn ? 'text-white/70' : 'text-gray-400'}`}>ред.</span>
                               )}
-                              <p className="text-[11px] text-gray-500">
+                              <p className={`text-[11px] ${isOwn ? 'text-white/70' : 'text-gray-500'}`}>
                                 {new Date(message.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
                               </p>
                             </div>
                             {isOwn && (
                               <div className="flex items-center gap-0.5">
                                 {message.isRead ? (
-                                  // 2 зелёные галочки = прочитано
                                   <>
-                                    <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className={`w-4 h-4 ${isOwn ? 'text-white' : 'text-green-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                                     </svg>
-                                    <svg className="w-4 h-4 text-green-400 -ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className={`w-4 h-4 ${isOwn ? 'text-white' : 'text-green-400'} -ml-2`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                                     </svg>
                                   </>
                                 ) : message.isDelivered ? (
-                                  // 2 серые галочки = доставлено
                                   <>
-                                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className={`w-4 h-4 ${isOwn ? 'text-white/70' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                                     </svg>
-                                    <svg className="w-4 h-4 text-gray-400 -ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className={`w-4 h-4 ${isOwn ? 'text-white/70' : 'text-gray-400'} -ml-2`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                                     </svg>
                                   </>
                                 ) : (
-                                  // 1 серая галочка = отправлено
-                                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <svg className={`w-4 h-4 ${isOwn ? 'text-white/50' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                                   </svg>
                                 )}
@@ -634,6 +651,47 @@ function ChatPageContent() {
           </div>
         </div>
       )}
+
+      {/* Delete Message Modal */}
+      <Modal
+        isOpen={!!deletingMessageId}
+        onClose={() => setDeletingMessageId(null)}
+        title="Удаление сообщения"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-300">
+            Вы уверены, что хотите удалить это сообщение?
+          </p>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="deleteForBoth"
+              checked={deleteForBoth}
+              onChange={(e) => setDeleteForBoth(e.target.checked)}
+              className="w-4 h-4 rounded border-arena-border bg-arena-dark text-neon-purple focus:ring-neon-purple focus:ring-offset-arena-card"
+            />
+            <label htmlFor="deleteForBoth" className="text-sm text-gray-400 select-none cursor-pointer">
+              Удалить у обоих
+            </label>
+          </div>
+          <div className="flex gap-3 pt-4">
+            <Button
+              variant="secondary"
+              className="flex-1"
+              onClick={() => setDeletingMessageId(null)}
+            >
+              Отмена
+            </Button>
+            <Button
+              variant="primary"
+              className="flex-1 bg-red-500 hover:bg-red-600 border-red-500 text-white"
+              onClick={confirmDelete}
+            >
+              Удалить
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

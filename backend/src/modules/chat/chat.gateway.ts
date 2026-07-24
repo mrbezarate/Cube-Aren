@@ -80,11 +80,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     client.join(roomId);
     
-    // Отправляем историю сообщений
-    const messages = await this.chatService.getMessages(roomId);
+    // Получить сообщения комнаты
+    const messages = await this.chatService.getMessages(roomId, userId);
     client.emit('messages', messages);
     
-    // Автоматически помечаем сообщения как прочитанные
+    // Помечаем сообщения как прочитанные
     await this.chatService.markMessagesAsRead(roomId, userId);
     
     // Уведомляем собеседника что сообщения прочитаны
@@ -188,16 +188,16 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @UseGuards(WsThrottleGuard)
   async handleDeleteMessage(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { messageId: string; roomId: string },
+    @MessageBody() data: { messageId: string; roomId: string; deleteForBoth?: boolean },
   ) {
     const userId = client.data.userId;
-    const { messageId, roomId } = data;
+    const { messageId, roomId, deleteForBoth = true } = data;
 
     try {
-      await this.chatService.deleteMessage(messageId, userId);
+      await this.chatService.deleteMessage(messageId, userId, deleteForBoth);
       
       // Notify room
-      this.server.to(roomId).emit('message_deleted', { messageId, roomId });
+      this.server.to(roomId).emit('message_deleted', { messageId, roomId, deleteForBoth, deletedBy: userId });
       
       return { success: true };
     } catch (error) {

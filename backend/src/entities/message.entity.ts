@@ -43,6 +43,9 @@ export class Message {
   @Column({ default: false })
   isEdited: boolean;
 
+  @Column({ default: false })
+  deletedForSender: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 
