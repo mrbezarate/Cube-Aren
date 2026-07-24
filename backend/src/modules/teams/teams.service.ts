@@ -13,6 +13,8 @@ import { Team } from '../../entities/team.entity';
 import { User } from '../../entities/user.entity';
 import { GameType } from '../../entities/player-stats.entity';
 import { toUserCard } from '../../common/user-view';
+import { WalletService } from '../wallet/wallet.service';
+import { TransactionType } from '../../entities/transaction.entity';
 import { CreateTeamDto } from './dto/create-team.dto';
 import { RequestJoinTeamDto } from './dto/request-join-team.dto';
 import { UpdateTeamDto } from './dto/update-team.dto';
@@ -28,6 +30,7 @@ export class TeamsService {
     private teamJoinRequestsRepo: Repository<TeamJoinRequest>,
     @InjectRepository(User)
     private usersRepo: Repository<User>,
+    private walletService: WalletService,
   ) {}
 
   // REMOVED: normalizeGames was dead code after createTeam refactor
@@ -131,7 +134,7 @@ export class TeamsService {
     });
     await this.teamMembersRepo.save(member);
 
-    await this.usersRepo.decrement({ id: captainId }, 'credits', 400);
+    await this.walletService.deductCredits(captainId, 400, TransactionType.CLAN_CREATE, team.id);
 
     return this.teamsRepo.findOne({ where: { id: team.id }, relations: ['captain'] });
   }

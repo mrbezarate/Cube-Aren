@@ -5,6 +5,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { GameType } from './player-stats.entity';
 
 export enum UserRole {
   PARTICIPANT = 'participant',
@@ -24,20 +25,7 @@ export enum Gender {
   OTHER = 'other',
 }
 
-export enum GameType {
-  CS2 = 'cs2',
-  DOTA2 = 'dota2',
-  VALORANT = 'valorant',
-  LOL = 'lol',
-  PUBG = 'pubg',
-  APEX = 'apex',
-  FORTNITE = 'fortnite',
-  ROCKET_LEAGUE = 'rocket_league',
-  OVERWATCH2 = 'overwatch2',
-  RAINBOW6 = 'rainbow6',
-  FIFA = 'fifa',
-  CUSTOM = 'custom',
-}
+
 
 @Entity('users')
 export class User {

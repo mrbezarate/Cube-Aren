@@ -26,6 +26,7 @@ interface ChatRoom {
 
 interface Message {
   id: string;
+  roomId: string;
   content: string;
   senderId: string;
   sender: {

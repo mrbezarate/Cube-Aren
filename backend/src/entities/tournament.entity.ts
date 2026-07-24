@@ -8,16 +8,8 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { User } from './user.entity';
+import { GameType } from './player-stats.entity';
 
-export enum TournamentGame {
-  CS2 = 'cs2',
-  DOTA2 = 'dota2',
-  VALORANT = 'valorant',
-  LOL = 'lol',
-  PUBG = 'pubg',
-  APEX = 'apex',
-  CUSTOM = 'custom',
-}
 
 export enum TournamentFormat {
   ONE_VS_ONE = '1v1',
@@ -56,8 +48,8 @@ export class Tournament {
   @Column({ type: 'text', nullable: true })
   description: string;
 
-  @Column({ type: 'enum', enum: TournamentGame })
-  game: TournamentGame;
+  @Column({ type: 'enum', enum: GameType })
+  game: GameType;
 
   @Column({ type: 'enum', enum: TournamentFormat })
   format: TournamentFormat;

@@ -11,7 +11,8 @@ import {
   MaxLength,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { TournamentGame, TournamentFormat, TournamentType, GameMode } from '../../../entities/tournament.entity';
+import { TournamentFormat, TournamentType, GameMode } from '../../../entities/tournament.entity';
+import { GameType } from '../../../entities/player-stats.entity';
 
 export class CreateTournamentDto {
   @ApiProperty()
@@ -25,9 +26,9 @@ export class CreateTournamentDto {
   @IsString()
   description?: string;
 
-  @ApiProperty({ enum: TournamentGame })
-  @IsEnum(TournamentGame)
-  game: TournamentGame;
+  @ApiProperty({ enum: GameType })
+  @IsEnum(GameType)
+  game: GameType;
 
   @ApiProperty({ enum: TournamentFormat })
   @IsEnum(TournamentFormat)
