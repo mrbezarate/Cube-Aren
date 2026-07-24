@@ -485,10 +485,12 @@ function TeamsPageContent() {
         user ? api.teams.getMyRequests() : Promise.resolve([]),
       ]);
       
-      if (user && myRes.length > 0 && !isSearchMode) {
+      if (user && Array.isArray(myRes) && myRes.length > 0 && !isSearchMode) {
         const mainClan = myRes.find((t: any) => t.myRole === 'captain') || myRes[0];
-        router.push(`/teams/${mainClan.id}`);
-        return;
+        if (mainClan && mainClan.myRole) {
+          router.push(`/teams/${mainClan.id}`);
+          return;
+        }
       }
 
       setTeams(allRes.data);

@@ -35,11 +35,22 @@ export default function Sidebar() {
   useEffect(() => {
     if (isAuthenticated && user) {
       api.teams.getMy().then(teams => {
-        if (teams && teams.length > 0) {
+        if (teams && Array.isArray(teams) && teams.length > 0) {
           const mainClan = teams.find((t: any) => t.myRole === 'captain') || teams[0];
-          setMyMainClanId(mainClan.id);
+          if (mainClan && mainClan.myRole) {
+            setMyMainClanId(mainClan.id);
+          } else {
+            setMyMainClanId(null);
+          }
+        } else {
+          setMyMainClanId(null);
         }
-      }).catch(console.error);
+      }).catch((err) => {
+        console.error(err);
+        setMyMainClanId(null);
+      });
+    } else {
+      setMyMainClanId(null);
     }
   }, [isAuthenticated, user]);
 
