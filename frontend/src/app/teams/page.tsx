@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, Suspense } from 'react';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -458,7 +458,7 @@ function CreateClanModal({ onClose, onSuccess }: { onClose: () => void; onSucces
 // ────────────────────────────────────────────────────────────────────
 // Main Page
 // ────────────────────────────────────────────────────────────────────
-export default function TeamsPage() {
+function TeamsPageContent() {
   const { user } = useAuthStore();
   const [teams, setTeams] = useState<Team[]>([]);
   const [myTeams, setMyTeams] = useState<Team[]>([]);
@@ -759,5 +759,13 @@ export default function TeamsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function TeamsPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-zinc-500 font-orbitron uppercase tracking-widest text-sm animate-pulse">Загрузка...</div>}>
+      <TeamsPageContent />
+    </Suspense>
   );
 }
