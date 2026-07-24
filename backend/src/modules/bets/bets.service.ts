@@ -27,6 +27,10 @@ export class BetsService {
   ) {}
 
   async placeBet(bettorId: string, dto: CreateBetDto): Promise<Bet> {
+    if (!dto.amount || Number(dto.amount) <= 0) {
+      throw new BadRequestException('Сумма ставки должна быть больше 0');
+    }
+
     const tournament = await this.tournamentsRepo.findOne({ where: { id: dto.tournamentId } });
     if (!tournament) throw new NotFoundException('Турнир не найден');
     if (tournament.status !== TournamentStatus.OPEN) {

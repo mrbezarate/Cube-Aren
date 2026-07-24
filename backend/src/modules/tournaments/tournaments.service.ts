@@ -14,6 +14,7 @@ import { TournamentReport } from '../../entities/tournament-report.entity';
 import { User } from '../../entities/user.entity';
 import { Match } from '../../entities/match.entity';
 import { Bet, BetStatus } from '../../entities/bet.entity';
+import { Participant } from '../../entities/participant.entity';
 import { UserPreferences } from '../../entities/user-preferences.entity';
 import { WalletService } from '../wallet/wallet.service';
 import { TransactionType } from '../../entities/transaction.entity';
@@ -209,6 +210,42 @@ export class TournamentsService {
     if (tournament.organizerId !== userId) {
       throw new ForbiddenException('Only the organizer can update status');
     }
+
+    if (status === TournamentStatus.CANCELLED && tournament.status !== TournamentStatus.CANCELLED) {
+      const participants = await this.tournamentsRepo.manager.find(Participant, {
+        where: { tournamentId: id }
+      });
+      if (tournament.entryFee > 0) {
+        for (const p of participants) {
+          await this.walletService.addCredits(
+            p.userId,
+            Number(tournament.entryFee),
+            TransactionType.REFUND,
+            id,
+            `Возврат взноса за отмену турнира: ${tournament.title}`,
+          );
+        }
+      }
+
+      const bets = await this.betsRepo.find({
+        where: { tournamentId: id, status: BetStatus.PENDING },
+      });
+      for (const bet of bets) {
+        await this.walletService.addCredits(
+          bet.bettorId,
+          Number(bet.amount),
+          TransactionType.REFUND,
+          id,
+          `Возврат ставки в связи с отменой турнира`,
+        );
+        await this.betsRepo.update(bet.id, {
+          status: BetStatus.REFUNDED,
+          payout: Number(bet.amount),
+          resolvedAt: new Date(),
+        });
+      }
+    }
+
     await this.tournamentsRepo.update(id, { status });
     return this.findOne(id);
   }

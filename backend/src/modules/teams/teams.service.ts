@@ -180,12 +180,8 @@ export class TeamsService {
     const team = await this.teamsRepo.findOne({ where: { id: teamId } });
     if (!team) throw new NotFoundException('Команда не найдена');
 
-    // Only captain or vice_captain can update settings
-    const requester = await this.teamMembersRepo.findOne({ where: { teamId, userId } });
-    const isAllowed = team.captainId === userId ||
-      (requester && (requester.role === TeamRole.VICE_CAPTAIN));
-    if (!isAllowed) {
-      throw new ForbiddenException('Только капитан или заместитель может изменять команду');
+    if (team.captainId !== userId) {
+      throw new ForbiddenException('Только капитан может изменять команду');
     }
 
     const updates: Partial<Team> = { ...dto } as any;
@@ -291,13 +287,8 @@ export class TeamsService {
     const team = await this.teamsRepo.findOne({ where: { id: teamId } });
     if (!team) throw new NotFoundException('Команда не найдена');
 
-    const kicker = await this.teamMembersRepo.findOne({ where: { teamId, userId: kickerId } });
-    const isCaptain = team.captainId === kickerId;
-    const isViceCaptain = kicker?.role === TeamRole.VICE_CAPTAIN;
-
-    // Only captain or vice_captain may kick
-    if (!isCaptain && !isViceCaptain) {
-      throw new ForbiddenException('Только капитан или заместитель может исключать игроков');
+    if (team.captainId !== kickerId) {
+      throw new ForbiddenException('Только капитан может исключать игроков');
     }
 
     if (targetUserId === kickerId) {
@@ -307,10 +298,7 @@ export class TeamsService {
     const target = await this.teamMembersRepo.findOne({ where: { teamId, userId: targetUserId } });
     if (!target) throw new NotFoundException('Игрок не найден в команде');
 
-    // Vice captain cannot kick captain or other vice captains
-    if (isViceCaptain && (target.userId === team.captainId || target.role === TeamRole.VICE_CAPTAIN)) {
-      throw new ForbiddenException('Заместитель не может исключить капитана или другого заместителя');
-    }
+
 
     await this.teamMembersRepo.remove(target);
     await this.teamsRepo.decrement({ id: teamId }, 'membersCount', 1);
@@ -351,11 +339,8 @@ export class TeamsService {
     const team = await this.teamsRepo.findOne({ where: { id: teamId } });
     if (!team) throw new NotFoundException('Команда не найдена');
 
-    const moderator = await this.teamMembersRepo.findOne({ where: { teamId, userId: moderatorId } });
-    const canModerate = team.captainId === moderatorId ||
-      (moderator && (moderator.role === TeamRole.VICE_CAPTAIN || moderator.role === TeamRole.MODERATOR));
-    if (!canModerate) {
-      throw new ForbiddenException('Только капитан, заместитель или модератор может принимать заявки');
+    if (team.captainId !== moderatorId) {
+      throw new ForbiddenException('Только капитан может принимать заявки');
     }
 
     if (team.membersCount >= team.maxMembers) {
@@ -397,11 +382,8 @@ export class TeamsService {
     const team = await this.teamsRepo.findOne({ where: { id: teamId } });
     if (!team) throw new NotFoundException('Команда не найдена');
 
-    const moderator = await this.teamMembersRepo.findOne({ where: { teamId, userId: moderatorId } });
-    const canModerate = team.captainId === moderatorId ||
-      (moderator && (moderator.role === TeamRole.VICE_CAPTAIN || moderator.role === TeamRole.MODERATOR));
-    if (!canModerate) {
-      throw new ForbiddenException('Только капитан, заместитель или модератор может отклонять заявки');
+    if (team.captainId !== moderatorId) {
+      throw new ForbiddenException('Только капитан может отклонять заявки');
     }
 
     const request = await this.teamJoinRequestsRepo.findOne({

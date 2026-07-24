@@ -131,7 +131,7 @@ export class TeamsController {
   @Delete(':id/members/:userId')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Kick a member (captain or vice captain)' })
+  @ApiOperation({ summary: 'Kick a member (captain only)' })
   kickMember(
     @Param('id') id: string,
     @Param('userId') targetUserId: string,

@@ -21,12 +21,13 @@ export class ChatController {
   }
 
   @Get('room/:roomId')
-  async getRoom(@Param('roomId') roomId: string) {
-    return this.chatService.getRoom(roomId);
+  async getRoom(@Param('roomId') roomId: string, @Req() req: any) {
+    return this.chatService.getRoom(roomId, req.user.id);
   }
 
   @Get('room/:roomId/messages')
   async getMessages(@Param('roomId') roomId: string, @Req() req: any) {
+    await this.chatService.markMessagesAsRead(roomId, req.user.id);
     return this.chatService.getMessages(roomId, req.user.id);
   }
 }

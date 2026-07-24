@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { ChatRoom } from '../../entities/chat-room.entity';
@@ -24,6 +24,10 @@ export class ChatService {
     const [minId, maxId] = [user1Id, user2Id].sort();
     console.log(`[ChatService] Sorted IDs: min=${minId}, max=${maxId}`);
     
+    if (user1Id === user2Id) {
+      throw new BadRequestException('Нельзя создать чат с самим собой');
+    }
+
     // Используем transaction для атомарности
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -98,7 +102,7 @@ export class ChatService {
   }
 
   // Получить комнату по ID
-  async getRoom(roomId: string): Promise<ChatRoom> {
+  async getRoom(roomId: string, userId: string): Promise<ChatRoom> {
     const room = await this.chatRoomRepo.findOne({
       where: { id: roomId },
       relations: ['user1', 'user2'],
@@ -106,6 +110,10 @@ export class ChatService {
 
     if (!room) {
       throw new NotFoundException('Комната не найдена');
+    }
+
+    if (room.user1Id !== userId && room.user2Id !== userId) {
+      throw new ForbiddenException('Нет доступа к этой комнате');
     }
 
     return room;
@@ -159,6 +167,10 @@ export class ChatService {
 
   // Создать сообщение
   async createMessage(roomId: string, senderId: string, content: string, isDelivered = true): Promise<Message> {
+    if (!content || content.trim().length === 0) {
+      throw new BadRequestException('Сообщение не может быть пустым');
+    }
+
     const message = this.messageRepo.create({
       roomId,
       senderId,
@@ -193,7 +205,11 @@ export class ChatService {
     }
 
     if (message.senderId !== userId) {
-      throw new BadRequestException('Нельзя редактировать чужие сообщения');
+      throw new ForbiddenException('Нельзя редактировать чужие сообщения');
+    }
+
+    if (!newContent || newContent.trim().length === 0) {
+      throw new BadRequestException('Сообщение не может быть пустым');
     }
 
     message.content = newContent;
@@ -229,7 +245,7 @@ export class ChatService {
     }
 
     if (message.senderId !== userId) {
-      throw new BadRequestException('Нельзя удалять чужие сообщения');
+      throw new ForbiddenException('Нельзя удалять чужие сообщения');
     }
 
     const roomId = message.roomId;
@@ -255,6 +271,14 @@ export class ChatService {
 
   // Получить сообщения комнаты
   async getMessages(roomId: string, userId: string, limit = 50): Promise<Message[]> {
+    const room = await this.chatRoomRepo.findOne({ where: { id: roomId } });
+    if (!room) {
+      throw new NotFoundException('Комната не найдена');
+    }
+    if (room.user1Id !== userId && room.user2Id !== userId) {
+      throw new ForbiddenException('Нет доступа к сообщениям этой комнаты');
+    }
+
     const qb = this.messageRepo.createQueryBuilder('message')
       .leftJoinAndSelect('message.sender', 'sender')
       .where('message.roomId = :roomId', { roomId })

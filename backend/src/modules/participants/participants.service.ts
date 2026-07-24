@@ -84,6 +84,14 @@ export class ParticipantsService {
 
       // Проверка: нельзя смешивать клановых и соло в одном слоте
       if (options.clanId) {
+        // Проверка: клан не должен быть зарегистрирован в другом слоте
+        const existingClan = await this.participantsRepo.findOne({
+          where: { tournamentId, clanId: options.clanId },
+        });
+        if (existingClan && existingClan.teamSlot !== teamSlot) {
+          throw new ConflictException('Этот клан уже зарегистрирован в другом командном слоте');
+        }
+
         // Клановая регистрация: слот не должен содержать соло-игроков
         const hasSoloInSlot = slotMembers.some((m) => !m.clanId);
         if (hasSoloInSlot) {
