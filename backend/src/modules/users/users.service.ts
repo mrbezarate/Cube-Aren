@@ -733,7 +733,7 @@ export class UsersService {
     const skip = (page - 1) * limit;
     
     const isOwner = currentUserId === userId;
-    const isFriend = currentUserId && !isOwner ? await this.friendsService.areFriends(userId, currentUserId) : false;
+    const isFriend = currentUserId && !isOwner ? await this.areFriends(userId, currentUserId) : false;
 
     if (!isOwner) {
       const privacy = await this.privacySettingsRepo.findOne({ where: { userId } });
@@ -767,7 +767,7 @@ export class UsersService {
     const skip = (page - 1) * limit;
     
     const isOwner = currentUserId === userId;
-    const isFriend = currentUserId && !isOwner ? await this.friendsService.areFriends(userId, currentUserId) : false;
+    const isFriend = currentUserId && !isOwner ? await this.areFriends(userId, currentUserId) : false;
 
     if (!isOwner) {
       const privacy = await this.privacySettingsRepo.findOne({ where: { userId } });
@@ -800,6 +800,10 @@ export class UsersService {
   async isFollowing(followerId: string, followingId: string): Promise<boolean> {
     const follow = await this.followsRepo.findOne({ where: { followerId, followingId } });
     return !!follow;
+  }
+
+  async areFriends(userId1: string, userId2: string): Promise<boolean> {
+    return this.friendsService.areFriends(userId1, userId2);
   }
 
 

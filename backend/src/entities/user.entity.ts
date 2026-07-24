@@ -5,7 +5,8 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
-export { GameType } from './player-stats.entity';
+import { GameType } from './player-stats.entity';
+export { GameType };
 
 export enum UserRole {
   PARTICIPANT = 'participant',
