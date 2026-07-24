@@ -163,6 +163,48 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
+  @SubscribeMessage('edit_message')
+  @UseGuards(WsThrottleGuard)
+  async handleEditMessage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { messageId: string; content: string; roomId: string },
+  ) {
+    const userId = client.data.userId;
+    const { messageId, content, roomId } = data;
+
+    try {
+      const updatedMessage = await this.chatService.editMessage(messageId, userId, content);
+      
+      // Notify room
+      this.server.to(roomId).emit('message_edited', updatedMessage);
+      
+      return { success: true, message: updatedMessage };
+    } catch (error) {
+      return { error: error.message || 'Failed to edit message' };
+    }
+  }
+
+  @SubscribeMessage('delete_message')
+  @UseGuards(WsThrottleGuard)
+  async handleDeleteMessage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { messageId: string; roomId: string },
+  ) {
+    const userId = client.data.userId;
+    const { messageId, roomId } = data;
+
+    try {
+      await this.chatService.deleteMessage(messageId, userId);
+      
+      // Notify room
+      this.server.to(roomId).emit('message_deleted', { messageId, roomId });
+      
+      return { success: true };
+    } catch (error) {
+      return { error: error.message || 'Failed to delete message' };
+    }
+  }
+
   @SubscribeMessage('mark_as_read')
   async handleMarkAsRead(
     @ConnectedSocket() client: Socket,

@@ -40,6 +40,12 @@ export class Message {
   @Column({ default: true })
   isDelivered: boolean; // Доставлено получателю (он онлайн)
 
+  @Column({ default: false })
+  isEdited: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
+
+  @Column({ type: 'timestamp', nullable: true })
+  updatedAt: Date;
 }

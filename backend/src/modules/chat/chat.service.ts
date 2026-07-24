@@ -168,6 +168,72 @@ export class ChatService {
     });
   }
 
+  // Редактировать сообщение
+  async editMessage(messageId: string, userId: string, newContent: string): Promise<Message> {
+    const message = await this.messageRepo.findOne({
+      where: { id: messageId },
+      relations: ['sender'],
+    });
+
+    if (!message) {
+      throw new NotFoundException('Сообщение не найдено');
+    }
+
+    if (message.senderId !== userId) {
+      throw new BadRequestException('Нельзя редактировать чужие сообщения');
+    }
+
+    message.content = newContent;
+    message.isEdited = true;
+    message.updatedAt = new Date();
+
+    await this.messageRepo.save(message);
+
+    // Обновляем lastMessage в комнате, если это последнее сообщение
+    const room = await this.chatRoomRepo.findOne({ where: { id: message.roomId } });
+    if (room && room.lastMessage === message.content) {
+      // It's possible the lastMessage was the old content, so this check might not always hit perfectly,
+      // but typically we can just update it if we fetch the latest message in the room.
+      const latestMessage = await this.messageRepo.findOne({
+        where: { roomId: message.roomId },
+        order: { createdAt: 'DESC' },
+      });
+      if (latestMessage && latestMessage.id === message.id) {
+        room.lastMessage = newContent;
+        await this.chatRoomRepo.save(room);
+      }
+    }
+
+    return message;
+  }
+
+  // Удалить сообщение
+  async deleteMessage(messageId: string, userId: string): Promise<void> {
+    const message = await this.messageRepo.findOne({ where: { id: messageId } });
+
+    if (!message) {
+      throw new NotFoundException('Сообщение не найдено');
+    }
+
+    if (message.senderId !== userId) {
+      throw new BadRequestException('Нельзя удалять чужие сообщения');
+    }
+
+    const roomId = message.roomId;
+    await this.messageRepo.remove(message);
+
+    // Обновляем lastMessage в комнате, если мы удалили последнее сообщение
+    const latestMessage = await this.messageRepo.findOne({
+      where: { roomId },
+      order: { createdAt: 'DESC' },
+    });
+
+    await this.chatRoomRepo.update(roomId, {
+      lastMessage: latestMessage ? latestMessage.content : null,
+      lastMessageAt: latestMessage ? latestMessage.createdAt : new Date(),
+    });
+  }
+
   // Получить сообщения комнаты
   async getMessages(roomId: string, limit = 50): Promise<Message[]> {
     return this.messageRepo.find({

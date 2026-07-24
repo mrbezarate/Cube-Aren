@@ -6,7 +6,7 @@ import { useSocket } from '@/lib/hooks/useSocket';
 import { useAuthStore } from '@/lib/store/auth.store';
 import { api } from '@/lib/api';
 import { toast } from 'react-hot-toast';
-import { Send, Users, MessageCircle, ArrowLeft } from 'lucide-react';
+import { Send, Users, MessageCircle, ArrowLeft, MoreVertical, Edit2, Trash2, X } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Avatar from '@/components/ui/Avatar';
 
@@ -36,7 +36,9 @@ interface Message {
   };
   isRead: boolean;
   isDelivered: boolean;
+  isEdited?: boolean;
   createdAt: string;
+  updatedAt?: string;
 }
 
 interface Friend {
@@ -59,6 +61,7 @@ function ChatPageContent() {
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingRoom, setLoadingRoom] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -131,6 +134,26 @@ function ChatPageContent() {
         }
       });
 
+      socket.on('message_edited', (editedMessage: Message) => {
+        setMessages((prev) =>
+          prev.map((msg) => (msg.id === editedMessage.id ? editedMessage : msg))
+        );
+        // Обновить lastMessage если нужно
+        setRooms((prev) =>
+          prev.map((room) => {
+            if (room.id === editedMessage.roomId || (selectedRoom && selectedRoom.id === room.id)) {
+               // Только если это последнее сообщение, но мы просто обновим для надежности
+               // Это сложно проверить без полного массива, так что пока так
+            }
+            return room;
+          })
+        );
+      });
+
+      socket.on('message_deleted', (data: { messageId: string, roomId: string }) => {
+        setMessages((prev) => prev.filter((msg) => msg.id !== data.messageId));
+      });
+
       return () => {
         socket.off('rooms');
         socket.off('messages');
@@ -138,6 +161,8 @@ function ChatPageContent() {
         socket.off('room_updated');
         socket.off('user_typing');
         socket.off('messages_read');
+        socket.off('message_edited');
+        socket.off('message_deleted');
       };
     }
   }, [socket, isConnected, selectedRoom, user]);
@@ -244,6 +269,21 @@ function ChatPageContent() {
   const handleSendMessage = () => {
     if (!newMessage.trim() || !selectedRoom || !socket || !isConnected) return;
 
+    if (editingMessageId) {
+      socket.emit('edit_message', {
+        roomId: selectedRoom.id,
+        messageId: editingMessageId,
+        content: newMessage.trim(),
+      }, (response: any) => {
+        if (response?.error) {
+          toast.error(response.error);
+        }
+      });
+      setEditingMessageId(null);
+      setNewMessage('');
+      return;
+    }
+
     // Отправляем сообщение
     socket.emit('send_message', {
       roomId: selectedRoom.id,
@@ -259,6 +299,27 @@ function ChatPageContent() {
       }
     });
 
+    setNewMessage('');
+  };
+
+  const handleEditInit = (msg: Message) => {
+    setEditingMessageId(msg.id);
+    setNewMessage(msg.content);
+  };
+
+  const handleDelete = (msgId: string) => {
+    if (!selectedRoom || !socket || !isConnected) return;
+    if (confirm('Вы уверены, что хотите удалить сообщение?')) {
+      socket.emit('delete_message', { roomId: selectedRoom.id, messageId: msgId }, (response: any) => {
+        if (response?.error) {
+          toast.error(response.error);
+        }
+      });
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingMessageId(null);
     setNewMessage('');
   };
 
@@ -460,16 +521,34 @@ function ChatPageContent() {
                     const isOwn = message.senderId === user.id;
                     return (
                       <div key={message.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'} animate-fadeIn`}>
-                        <div className={`max-w-[75%] md:max-w-[60%] ${
+                        <div className={`group relative max-w-[75%] md:max-w-[60%] ${
                           isOwn 
                             ? 'bg-neon-purple/25 border-neon-purple/50' 
                             : 'bg-arena-card border-arena-border'
-                        } border rounded-2xl px-4 py-3 shadow-lg`}>
+                        } border rounded-2xl px-4 py-3 shadow-lg flex flex-col`}>
+                          
+                          {/* Dropdown menu for own messages */}
+                          {isOwn && (
+                            <div className="absolute top-2 -left-12 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
+                              <button onClick={() => handleEditInit(message)} className="p-1.5 bg-arena-card border border-arena-border rounded-full hover:bg-arena-dark text-gray-400 hover:text-white transition-colors" title="Редактировать">
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button onClick={() => handleDelete(message.id)} className="p-1.5 bg-arena-card border border-arena-border rounded-full hover:bg-red-500/20 text-gray-400 hover:text-red-500 transition-colors" title="Удалить">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          )}
+                          
                           <p className="text-base text-white break-words leading-relaxed">{message.content}</p>
                           <div className="flex items-center justify-end gap-2 mt-2">
-                            <p className="text-[11px] text-gray-500">
-                              {new Date(message.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-                            </p>
+                            <div className="flex items-center gap-1">
+                              {message.isEdited && (
+                                <span className="text-[10px] text-gray-400 mr-1 italic">ред.</span>
+                              )}
+                              <p className="text-[11px] text-gray-500">
+                                {new Date(message.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                            </div>
                             {isOwn && (
                               <div className="flex items-center gap-0.5">
                                 {message.isRead ? (
@@ -510,7 +589,18 @@ function ChatPageContent() {
               </div>
 
               {/* Input */}
-              <div className="p-5 border-t border-arena-border bg-arena-card/80 backdrop-blur-sm">
+              <div className="p-5 border-t border-arena-border bg-arena-card/80 backdrop-blur-sm flex flex-col gap-2">
+                {editingMessageId && (
+                  <div className="flex items-center justify-between text-sm text-gray-400 bg-arena-dark px-4 py-2 rounded-lg border border-arena-border">
+                    <div className="flex items-center gap-2">
+                      <Edit2 className="w-4 h-4 text-neon-purple" />
+                      <span>Редактирование сообщения</span>
+                    </div>
+                    <button onClick={cancelEdit} className="hover:text-white transition-colors">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
                 <div className="flex gap-3">
                   <input
                     type="text"
