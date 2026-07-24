@@ -1,350 +1,10 @@
-'use client';
+import re
+import sys
 
-import React, { useEffect, useState, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { api } from '@/lib/api';
-import { Team, GameType, TeamJoinRequest } from '@/types';
-import { toast } from 'react-hot-toast';
-import { useAuthStore } from '@/lib/store/auth.store';
-import Button from '@/components/ui/Button';
-import Card from '@/components/ui/Card';
-import Badge from '@/components/ui/Badge';
-import GenderIcon from '@/components/ui/GenderIcon';
-import Modal from '@/components/ui/Modal';
-import { 
-  Shield, Crown, Users, Trophy, ArrowLeft, Swords, Target, 
-  Calendar, Edit2, Upload, Trash2, Check, X, ShieldAlert,
-  Settings, UserX, UserCheck, MessageSquare, Plus, Globe
-} from 'lucide-react';
-import { format } from 'date-fns';
-import { ru } from 'date-fns/locale';
-import Avatar from '@/components/ui/Avatar';
-import { UserCard } from '@/types';
+with open("frontend/src/app/teams/[id]/page.tsx", "r", encoding="utf-8") as f:
+    code = f.read()
 
-interface TeamMember {
-  id: string;
-  user: UserCard;
-  role: string;
-  joinedAt: string;
-}
-
-interface TeamDetail extends Team {
-  members: TeamMember[];
-  requests: TeamJoinRequest[];
-}
-
-const GAMES: { id: GameType; name: string; icon: string }[] = [
-  { id: 'cs2', name: 'CS2', icon: '🔫' },
-  { id: 'dota2', name: 'Dota 2', icon: '🧙' },
-  { id: 'valorant', name: 'Valorant', icon: '🎯' },
-  { id: 'lol', name: 'LoL', icon: '⚔️' },
-  { id: 'pubg', name: 'PUBG', icon: '🪂' },
-  { id: 'apex', name: 'Apex', icon: '⚡' },
-];
-
-const FLAGS = [
-  { emoji: '🇷🇺', name: 'Россия' },
-  { emoji: '🇪🇺', name: 'Евросоюз' },
-  { emoji: '🇺🇸', name: 'США' },
-  { emoji: '🇯🇵', name: 'Япония' },
-  { emoji: '🇰🇷', name: 'Корея' },
-  { emoji: '🇧🇷', name: 'Бразилия' },
-  { emoji: '👑', name: 'Элита' },
-  { emoji: '👽', name: 'Кибер' },
-  { emoji: '🏴‍☠️', name: 'Пираты' },
-];
-
-const GAME_NAMES: Record<string, string> = {
-  cs2: 'CS2',
-  dota2: 'Dota 2',
-  valorant: 'Valorant',
-  lol: 'LoL',
-  pubg: 'PUBG',
-  apex: 'Apex',
-  custom: 'Другие',
-};
-
-const getGameName = (game: GameType) => GAME_NAMES[game] || game;
-
-export default function TeamDetailPage() {
-  const params = useParams();
-  const router = useRouter();
-  const teamId = params.id as string;
-  const { user: currentUser } = useAuthStore();
-  
-  const [team, setTeam] = useState<TeamDetail | null>(null);
-  const [myTeams, setMyTeams] = useState<Team[]>([]);
-  const [loading, setLoading] = useState(true);
-  
-  // Recruitment Join
-  const [joining, setJoining] = useState(false);
-  const [joinMessage, setJoinMessage] = useState('');
-
-  // Editing Modals
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editTag, setEditTag] = useState('');
-  const [editDescription, setEditDescription] = useState('');
-  const [editRecruiting, setEditRecruiting] = useState(true);
-  const [editSupportedGames, setEditSupportedGames] = useState<GameType[]>([]);
-  const [editFlag, setEditFlag] = useState('🇷🇺');
-  const [editCustomFlag, setEditCustomFlag] = useState('');
-  
-  // File and URL States
-  const [editLogoUrl, setEditLogoUrl] = useState('');
-  const [editBannerUrl, setEditBannerUrl] = useState('');
-  const [savingSettings, setSavingSettings] = useState(false);
-
-  // Transfer Captain Confirmation Modal
-  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
-  const [transferTargetId, setTransferTargetId] = useState<string | null>(null);
-  const [transferTargetName, setTransferTargetName] = useState('');
-  
-  // File upload refs
-  const logoInputRef = useRef<HTMLInputElement>(null);
-  const bannerInputRef = useRef<HTMLInputElement>(null);
-  const [uploadingLogo, setUploadingLogo] = useState(false);
-  const [uploadingBanner, setUploadingBanner] = useState(false);
-
-  const loadTeamData = async () => {
-    try {
-      setLoading(true);
-      const data = await api.teams.getOne(teamId);
-      setTeam(data as TeamDetail);
-      
-      if (currentUser) {
-        const myRes = await api.teams.getMy();
-        setMyTeams(myRes);
-      }
-      
-      // Pre-fill edit inputs
-      if (data) {
-        setEditTag(data.tag || '');
-        setEditDescription(data.description || '');
-        setEditRecruiting(data.isRecruiting);
-        setEditSupportedGames(data.supportedGames || [data.game]);
-        setEditFlag(data.flag || '🇷🇺');
-        setEditLogoUrl(data.logoUrl || '');
-        setEditBannerUrl(data.bannerUrl || '');
-      }
-    } catch (error: any) {
-      console.error('Failed to load team details:', error);
-      toast.error('Не удалось загрузить данные о клане');
-      router.push('/teams');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (teamId) {
-      loadTeamData();
-    }
-  }, [teamId]);
-
-  const toggleEditSupportedGame = (gameId: GameType) => {
-    setEditSupportedGames((prev) => {
-      if (prev.includes(gameId)) {
-        if (prev.length <= 1) {
-          toast.error('Клан должен поддерживать как минимум одну игру');
-          return prev;
-        }
-        return prev.filter((item) => item !== gameId);
-      }
-      if (prev.length >= 3) {
-        toast.error('Максимум 3 игры');
-        return prev;
-      }
-      return [...prev, gameId];
-    });
-  };
-
-  // Roles verification helper
-  const myMembership = team?.members?.find((m) => m.user.id === currentUser?.id);
-  const myRole = myMembership?.role;
-  const isCaptain = team?.captainId === currentUser?.id || myRole === 'captain';
-  const isViceCaptain = myRole === 'vice_captain';
-  const isModerator = myRole === 'moderator';
-  const isMember = !!myMembership;
-  
-  // Custom privileges
-  const canManageSettings = isCaptain || isViceCaptain;
-  const canManageRequests = isCaptain || isViceCaptain || isModerator;
-  const canManageRoles = isCaptain; // Only captain can change roles
-
-  const handleJoin = async () => {
-    if (!team) return;
-    setJoining(true);
-    try {
-      await api.teams.join(team.id, {
-        message: joinMessage.trim() || undefined,
-      });
-      toast.success('Заявка на вступление успешно отправлена!');
-      setJoinMessage('');
-      loadTeamData();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Не удалось отправить заявку');
-    } finally {
-      setJoining(false);
-    }
-  };
-
-  // Upload Logo from modal settings
-  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !team) return;
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    setUploadingLogo(true);
-    try {
-      const res = await api.teams.uploadLogo(team.id, formData);
-      toast.success('Логотип успешно загружен!');
-      setEditLogoUrl(res.logoUrl);
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Ошибка при загрузке логотипа');
-    } finally {
-      setUploadingLogo(false);
-    }
-  };
-
-  // Upload Banner from modal settings
-  const handleBannerChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !team) return;
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    setUploadingBanner(true);
-    try {
-      const res = await api.teams.uploadBanner(team.id, formData);
-      toast.success('Баннер успешно загружен!');
-      setEditBannerUrl(res.bannerUrl);
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Ошибка при загрузке баннера');
-    } finally {
-      setUploadingBanner(false);
-    }
-  };
-
-  // Update General Clan Settings
-  const handleSaveSettings = async () => {
-    if (!team) return;
-
-    setSavingSettings(true);
-    const finalFlag = editCustomFlag.trim() || editFlag;
-
-    try {
-      await api.teams.update(team.id, {
-        description: editDescription.trim() || undefined,
-        tag: editTag.trim().toUpperCase() || undefined,
-        flag: finalFlag || undefined,
-        isRecruiting: editRecruiting,
-        supportedGames: editSupportedGames,
-        logoUrl: editLogoUrl.trim() || undefined,
-        bannerUrl: editBannerUrl.trim() || undefined,
-      });
-
-      toast.success('Настройки клана успешно сохранены!');
-      setIsEditModalOpen(false);
-      loadTeamData();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Не удалось обновить настройки');
-    } finally {
-      setSavingSettings(false);
-    }
-  };
-
-  // Moderate Request
-  const handleRequestAction = async (requestId: string, action: 'approve' | 'reject') => {
-    if (!team) return;
-    try {
-      if (action === 'approve') {
-        await api.teams.approveRequest(team.id, requestId);
-        toast.success('Игрок принят в клан!');
-      } else {
-        await api.teams.rejectRequest(team.id, requestId);
-        toast.success('Заявка отклонена');
-      }
-      loadTeamData();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Не удалось выполнить действие');
-    }
-  };
-
-  // Kick Member
-  const handleKick = async (targetUserId: string) => {
-    if (!team) return;
-    if (!confirm('Вы уверены, что хотите исключить этого игрока из клана?')) return;
-
-    try {
-      await api.teams.kickMember(team.id, targetUserId);
-      toast.success('Игрок успешно исключен');
-      loadTeamData();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Не удалось исключить игрока');
-    }
-  };
-
-  // Change Role
-  const handleRoleChange = async (targetUserId: string, targetName: string, newRole: string) => {
-    if (!team) return;
-    if (newRole === 'captain') {
-      setTransferTargetId(targetUserId);
-      setTransferTargetName(targetName);
-      setIsTransferModalOpen(true);
-      return;
-    }
-
-    try {
-      await api.teams.updateMemberRole(team.id, targetUserId, newRole);
-      toast.success('Роль игрока успешно изменена');
-      loadTeamData();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Не удалось изменить роль');
-    }
-  };
-
-  // Confirm Transfer Captain
-  const handleConfirmTransfer = async () => {
-    if (!team || !transferTargetId) return;
-    setIsTransferModalOpen(false);
-    try {
-      await api.teams.updateMemberRole(team.id, transferTargetId, 'captain');
-      toast.success(`Вы передали капитанство игроку ${transferTargetName}!`);
-      loadTeamData();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Не удалось передать капитанство');
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-bg-primary flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-accent-secondary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-400 font-orbitron font-bold text-xs uppercase tracking-widest animate-pulse">Загрузка клана...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!team) {
-    return (
-      <div className="min-h-screen bg-bg-primary flex items-center justify-center">
-        <div className="text-white text-lg font-orbitron font-bold">КЛАН НЕ НАЙДЕН</div>
-      </div>
-    );
-  }
-
-  const formattedDate = format(new Date(team.createdAt), 'd MMMM yyyy', { locale: ru });
-  const pendingRequests = team.requests || [];
-  const winRate = team.wins + team.losses > 0 
-    ? ((team.wins / (team.wins + team.losses)) * 100).toFixed(1)
-    : '0.0';
-  return (
+new_ui = """  return (
     <div className="min-h-screen bg-[#0a0a0c] pb-16 font-sans text-gray-300">
       
       {/* Hidden Upload Inputs */}
@@ -353,29 +13,13 @@ export default function TeamDetailPage() {
 
       {/* Navigation */}
       <div className="w-full bg-black/80 backdrop-blur-md border-b border-zinc-800/80 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center">
           <button
-            onClick={() => router.push('/teams?search=true')}
-            className="flex items-center gap-2 text-xs font-orbitron font-bold text-zinc-500 hover:text-white uppercase tracking-widest transition-colors group shrink-0"
+            onClick={() => router.back()}
+            className="flex items-center gap-2 text-xs font-orbitron font-bold text-zinc-500 hover:text-white uppercase tracking-widest transition-colors group"
           >
-            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Поиск кланов
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Назад в штаб
           </button>
-          
-          {myTeams.length > 0 && (
-            <div className="flex gap-2 overflow-x-auto items-center justify-end max-w-full pl-4 scrollbar-hide">
-              <span className="text-xs text-zinc-500 font-orbitron uppercase tracking-widest whitespace-nowrap hidden sm:block">Мои кланы:</span>
-              {myTeams.map(t => (
-                <Link
-                  key={t.id}
-                  href={`/teams/${t.id}`}
-                  className={`text-xs px-3 py-1.5 rounded-sm font-bold uppercase tracking-widest transition-colors whitespace-nowrap border ${t.id === teamId ? 'bg-yellow-600/10 text-yellow-500 border-yellow-600/30' : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:border-zinc-600 hover:text-white'}`}
-                  style={{ clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)' }}
-                >
-                  {t.name}
-                </Link>
-              ))}
-            </div>
-          )}
         </div>
       </div>
 
@@ -472,9 +116,9 @@ export default function TeamDetailPage() {
                   </button>
                 )}
 
-                {!isCaptain && !isMember && team.isRecruiting && !team.hasPendingRequest && (
+                {!isCaptain && !isMember && team.isRecruiting && !isPending && !hasInvitesDisabled && (
                   <button
-                    onClick={handleJoin}
+                    onClick={handleJoinRequest}
                     disabled={joining}
                     className="flex-1 sm:flex-none bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-black px-10 py-3.5 font-orbitron font-black uppercase tracking-widest transition-all text-xs disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(202,138,4,0.3)] hover:shadow-[0_0_30px_rgba(202,138,4,0.5)]"
                     style={{ clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)' }}
@@ -483,7 +127,7 @@ export default function TeamDetailPage() {
                   </button>
                 )}
 
-                {!isCaptain && !isMember && team.hasPendingRequest && (
+                {!isCaptain && !isMember && isPending && (
                   <div 
                     className="flex-1 sm:flex-none bg-zinc-900 text-yellow-500 px-8 py-3.5 font-orbitron font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-3 border border-yellow-600/30 shadow-inner"
                     style={{ clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)' }}
@@ -494,7 +138,7 @@ export default function TeamDetailPage() {
 
                 {isMember && !isCaptain && (
                   <button
-                    
+                    onClick={handleLeaveTeam}
                     className="flex-1 sm:flex-none bg-zinc-900 hover:bg-red-950 text-red-500 hover:text-red-400 px-8 py-3.5 font-orbitron font-bold uppercase tracking-widest transition-all text-xs flex items-center justify-center gap-3 border border-zinc-800 hover:border-red-900/50"
                     style={{ clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)' }}
                   >
@@ -700,12 +344,12 @@ export default function TeamDetailPage() {
                   {pendingRequests.map((req) => (
                     <div key={req.id} className="bg-black border border-zinc-800 p-3" style={{ clipPath: 'polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)' }}>
                       <div className="flex items-center gap-3 mb-3">
-                        <Link href={`/profile/${req.user.id}`}>
+                        <Link href={`/profile/${req.userId}`}>
                           <Avatar src={req.user.avatarUrl} alt={req.user.displayName || req.user.username} className="w-8 h-8 rounded-none border border-zinc-700" />
                         </Link>
                         <div>
                           <Link
-                            href={`/profile/${req.user.id}`}
+                            href={`/profile/${req.userId}`}
                             className="text-xs font-black font-orbitron uppercase text-white hover:text-yellow-500 transition-colors block"
                           >
                             {req.user.displayName || req.user.username}
@@ -722,14 +366,14 @@ export default function TeamDetailPage() {
 
                       <div className="flex gap-2">
                         <button
-                          
+                          onClick={() => handleAcceptRequest(req.id)}
                           className="flex-1 bg-green-900/20 hover:bg-green-900/40 text-green-500 border border-green-900/50 py-1.5 text-[10px] font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-1"
                           style={{ clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)' }}
                         >
                           <UserCheck className="w-3 h-3" /> Принять
                         </button>
                         <button
-                          
+                          onClick={() => handleRejectRequest(req.id)}
                           className="flex-1 bg-red-900/20 hover:bg-red-900/40 text-red-500 border border-red-900/50 py-1.5 text-[10px] font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-1"
                           style={{ clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)' }}
                         >
@@ -810,7 +454,7 @@ export default function TeamDetailPage() {
               {GAMES.map(game => (
                 <button
                   key={game.id}
-                  onClick={() => toggleEditSupportedGame(game.id)}
+                  onClick={() => toggleGame(game.id)}
                   className={`px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase flex items-center gap-1.5 transition-all ${
                     editSupportedGames.includes(game.id)
                       ? 'border-accent-secondary bg-accent-secondary/10 text-white'
@@ -911,7 +555,7 @@ export default function TeamDetailPage() {
             <Button variant="secondary" onClick={() => setIsEditModalOpen(false)} disabled={savingSettings}>
               Отмена
             </Button>
-            <Button variant="primary" onClick={handleSaveSettings} loading={savingSettings}>
+            <Button variant="primary" onClick={handleSaveSettings} isLoading={savingSettings}>
               Сохранить
             </Button>
           </div>

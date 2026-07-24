@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/lib/store/auth.store';
@@ -467,6 +468,10 @@ export default function TeamsPage() {
   const [joiningId, setJoiningId] = useState<string | null>(null);
   const [joinMsgs, setJoinMsgs] = useState<Record<string, string>>({});
 
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const isSearchMode = searchParams.get('search') === 'true';
+
   const [search, setSearch] = useState('');
   const [gameFilter, setGameFilter] = useState<GameType | ''>('');
   const [tab, setTab] = useState<'all' | 'recruiting'>('all');
@@ -479,6 +484,13 @@ export default function TeamsPage() {
         user ? api.teams.getMy() : Promise.resolve([]),
         user ? api.teams.getMyRequests() : Promise.resolve([]),
       ]);
+      
+      if (user && myRes.length > 0 && !isSearchMode) {
+        const mainClan = myRes.find((t: any) => t.myRole === 'captain') || myRes[0];
+        router.push(`/teams/${mainClan.id}`);
+        return;
+      }
+
       setTeams(allRes.data);
       setMyTeams(myRes);
       setPendingRequests(reqRes);

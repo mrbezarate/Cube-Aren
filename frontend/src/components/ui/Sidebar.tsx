@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/store/auth.store';
 import { useTranslation } from '@/lib/i18n';
+import { api } from '@/lib/api';
 
 const NAV_ITEMS = [
   { href: '/', translationKey: 'home' as const, icon: Home, exact: true },
@@ -29,6 +30,18 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { t } = useTranslation();
   const { isAuthenticated, isLoading, user } = useAuthStore();
+  const [myMainClanId, setMyMainClanId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      api.teams.getMy().then(teams => {
+        if (teams && teams.length > 0) {
+          const mainClan = teams.find((t: any) => t.myRole === 'captain') || teams[0];
+          setMyMainClanId(mainClan.id);
+        }
+      }).catch(console.error);
+    }
+  }, [isAuthenticated, user]);
 
   if (isLoading || !isAuthenticated || !user) {
     return null;
@@ -46,10 +59,14 @@ export default function Sidebar() {
               ? pathname === item.href
               : pathname === item.href || pathname.startsWith(item.match || `${item.href}/`);
 
+            const actualHref = item.translationKey === 'my_teams' && myMainClanId 
+              ? `/teams/${myMainClanId}` 
+              : item.href;
+
             return (
               <Link
                 key={item.href}
-                href={item.href}
+                href={actualHref}
                 className={clsx(
                   'flex items-center justify-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors lg:justify-start',
                   active
