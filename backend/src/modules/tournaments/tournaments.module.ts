@@ -10,6 +10,7 @@ import { TournamentReport } from '../../entities/tournament-report.entity';
 import { User } from '../../entities/user.entity';
 import { Match } from '../../entities/match.entity';
 import { Bet } from '../../entities/bet.entity';
+import { UserPreferences } from '../../entities/user-preferences.entity';
 import { WalletModule } from '../wallet/wallet.module';
 
 @Module({
@@ -22,6 +23,7 @@ import { WalletModule } from '../wallet/wallet.module';
       User,
       Match,
       Bet,
+      UserPreferences,
     ]),
     WalletModule,
   ],

@@ -255,6 +255,7 @@ export const api = {
     removeFriend: (friendId: string) => apiInstance.delete<{ message: string }>(`/friends/remove/${friendId}`).then(r => r.data),
     getIncoming: () => apiInstance.get<any[]>('/friends/incoming').then(r => r.data),
     getFriends: () => apiInstance.get<any[]>('/friends/list').then(r => r.data),
+    getUserFriends: (userId: string) => apiInstance.get<any[]>(`/friends/list/${userId}`).then(r => r.data),
     getStatus: (userId: string) => apiInstance.get<{ status: string }>(`/friends/status/${userId}`).then(r => r.data),
   },
   chat: {

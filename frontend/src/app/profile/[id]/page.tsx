@@ -9,6 +9,7 @@ import { UserProfile } from '@/types';
 import { toast } from 'react-hot-toast';
 import { useAuthStore } from '@/lib/store/auth.store';
 import { useSocket } from '@/lib/hooks/useSocket';
+import Avatar from '@/components/ui/Avatar';
 import GenderIcon from '@/components/ui/GenderIcon';
 import Button from '@/components/ui/Button';
 import {
@@ -49,6 +50,10 @@ export default function ProfilePage() {
   const [showVisitors, setShowVisitors] = useState(false);
   const [visitors, setVisitors] = useState<any[]>([]);
   const [loadingVisitors, setLoadingVisitors] = useState(false);
+  
+  const [socialModalType, setSocialModalType] = useState<'followers' | 'following' | 'friends' | null>(null);
+  const [socialUsers, setSocialUsers] = useState<any[]>([]);
+  const [loadingSocial, setLoadingSocial] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -157,19 +162,39 @@ export default function ProfilePage() {
   };
 
   const handleViewVisitors = async () => {
-    if (!isOwnProfile) return;
-    
     setShowVisitors(true);
     setLoadingVisitors(true);
-    
     try {
-      const data = await api.users.getProfileVisitors(userId);
-      setVisitors(data.views);
-    } catch (error: any) {
-      console.error('Failed to load visitors:', error);
-      toast.error('Не удалось загрузить посетителей');
+      const res = await api.users.getProfileVisitors(userId);
+      setVisitors(res.views || []);
+    } catch (error) {
+      console.error(error);
+      toast.error('Не удалось загрузить историю посетителей');
     } finally {
       setLoadingVisitors(false);
+    }
+  };
+
+  const handleOpenSocial = async (type: 'followers' | 'following' | 'friends') => {
+    setSocialModalType(type);
+    setLoadingSocial(true);
+    setSocialUsers([]);
+    try {
+      if (type === 'followers') {
+        const res = await api.users.getFollowers(userId);
+        setSocialUsers(res.data || []);
+      } else if (type === 'following') {
+        const res = await api.users.getFollowing(userId);
+        setSocialUsers(res.data || []);
+      } else if (type === 'friends') {
+        const res = await api.friends.getUserFriends(userId);
+        setSocialUsers(res || []);
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error('Доступ запрещен настройками приватности или произошла ошибка');
+    } finally {
+      setLoadingSocial(false);
     }
   };
 
@@ -319,14 +344,20 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-6 text-sm">
-                  <div className="flex items-center gap-2">
+                  <div 
+                    className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => handleOpenSocial('followers')}
+                  >
                     <Users className="w-4 h-4 text-neon-blue" />
                     <span className="text-white font-semibold">{profile.followersCount}</span>
-                    <span className="text-gray-400">подписчиков</span>
+                    <span className="text-gray-400 hover:text-neon-blue transition-colors">подписчиков</span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div 
+                    className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => handleOpenSocial('following')}
+                  >
                     <span className="text-white font-semibold">{profile.followingCount}</span>
-                    <span className="text-gray-400">подписок</span>
+                    <span className="text-gray-400 hover:text-white transition-colors">подписок</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Eye className="w-4 h-4 text-neon-green" />
@@ -537,10 +568,10 @@ export default function ProfilePage() {
                       onClick={() => setShowVisitors(false)}
                       className="flex items-center gap-4 p-4 rounded-lg border border-arena-border hover:border-neon-purple/50 bg-white/5 hover:bg-white/10 transition-all"
                     >
-                      <img
-                        src={visit.viewer.avatarUrl || '/default-avatar.svg'}
+                      <Avatar
+                        src={visit.viewer.avatarUrl}
                         alt={visit.viewer.username}
-                        className="w-12 h-12 rounded-lg object-cover"
+                        size="md"
                       />
                       <div className="flex-1">
                         <div className="font-semibold text-white">
@@ -555,6 +586,64 @@ export default function ProfilePage() {
                           hour: '2-digit',
                           minute: '2-digit',
                         })}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Social Modal */}
+      {socialModalType && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setSocialModalType(null)}>
+          <div
+            className="bg-arena-card border border-arena-border rounded-2xl max-w-lg w-full max-h-[80vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b border-arena-border flex items-center justify-between">
+              <h2 className="font-orbitron font-bold text-xl text-white flex items-center gap-2">
+                <Users className="w-5 h-5 text-neon-blue" />
+                {socialModalType === 'followers' && 'Подписчики'}
+                {socialModalType === 'following' && 'Подписки'}
+                {socialModalType === 'friends' && 'Друзья'}
+              </h2>
+              <button
+                onClick={() => setSocialModalType(null)}
+                className="text-gray-400 hover:text-white transition-colors text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6">
+              {loadingSocial ? (
+                <div className="text-center text-gray-400 py-8">Загрузка...</div>
+              ) : socialUsers.length === 0 ? (
+                <div className="text-center text-gray-400 py-8">
+                  Список пуст или скрыт настройками приватности
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {socialUsers.map((user) => (
+                    <Link
+                      key={user.id}
+                      href={`/profile/${user.id}`}
+                      onClick={() => setSocialModalType(null)}
+                      className="flex items-center gap-4 p-4 rounded-lg border border-arena-border hover:border-neon-purple/50 bg-white/5 hover:bg-white/10 transition-all"
+                    >
+                      <Avatar
+                        src={user.avatarUrl}
+                        alt={user.username}
+                        size="md"
+                      />
+                      <div className="flex-1">
+                        <div className="font-semibold text-white">
+                          {user.displayName || user.username}
+                        </div>
+                        <div className="text-sm text-gray-400">@{user.username}</div>
                       </div>
                     </Link>
                   ))}

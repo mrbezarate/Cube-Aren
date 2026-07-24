@@ -29,9 +29,10 @@ export class TournamentsController {
   constructor(private tournamentsService: TournamentsService) {}
 
   @Get()
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Get all tournaments with filters' })
-  findAll(@Query() filters: FilterTournamentDto) {
-    return this.tournamentsService.findAll(filters);
+  findAll(@Query() filters: FilterTournamentDto, @CurrentUser('id') userId?: string) {
+    return this.tournamentsService.findAll(filters, userId);
   }
 
   @Get('featured')

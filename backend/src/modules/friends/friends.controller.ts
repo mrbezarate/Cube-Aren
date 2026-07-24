@@ -72,6 +72,12 @@ export class FriendsController {
     return this.friendsService.getFriends(req.user.id);
   }
 
+  // Получить список друзей другого пользователя
+  @Get('list/:userId')
+  async getOtherUserFriends(@Param('userId') userId: string, @Req() req: any) {
+    return this.friendsService.getFriends(userId, req.user.id);
+  }
+
   // Получить статус подписки/дружбы
   @Get('status/:userId')
   async getFriendshipStatus(@Param('userId') userId: string, @Req() req: any) {

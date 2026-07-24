@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { ChatRoom } from '../../entities/chat-room.entity';
 import { Message } from '../../entities/message.entity';
+import { PrivacySettings, PrivacyLevel } from '../../entities/privacy-settings.entity';
 import { toUserCard } from '../../common/user-view';
 
 @Injectable()
@@ -12,6 +13,8 @@ export class ChatService {
     private chatRoomRepo: Repository<ChatRoom>,
     @InjectRepository(Message)
     private messageRepo: Repository<Message>,
+    @InjectRepository(PrivacySettings)
+    private privacySettingsRepo: Repository<PrivacySettings>,
     private dataSource: DataSource,
   ) {}
 
@@ -27,20 +30,30 @@ export class ChatService {
     await queryRunner.startTransaction();
 
     try {
-      // Проверяем что пользователи друзья = взаимная подписка
-      const followRepo = queryRunner.manager.getRepository('Follow');
-      
-      const follow1 = await followRepo.findOne({
-        where: { followerId: user1Id, followingId: user2Id },
-      });
-      const follow2 = await followRepo.findOne({
-        where: { followerId: user2Id, followingId: user1Id },
+      // Получаем настройки приватности получателя (user2Id)
+      const privacy = await queryRunner.manager.findOne(PrivacySettings, {
+        where: { userId: user2Id }
       });
 
-      console.log(`[ChatService] Follow check: follow1=${!!follow1}, follow2=${!!follow2}`);
+      if (privacy) {
+        if (privacy.canMessageMe === PrivacyLevel.NOBODY) {
+          throw new BadRequestException('Этот пользователь запретил присылать ему сообщения');
+        }
 
-      if (!follow1 || !follow2) {
-        throw new BadRequestException('Вы можете писать только друзьям (нужна взаимная подписка)');
+        if (privacy.canMessageMe === PrivacyLevel.FRIENDS) {
+          const followRepo = queryRunner.manager.getRepository('Follow');
+          // Проверяем что пользователи друзья
+          const follow1 = await followRepo.findOne({
+            where: { followerId: user1Id, followingId: user2Id },
+          });
+          const follow2 = await followRepo.findOne({
+            where: { followerId: user2Id, followingId: user1Id },
+          });
+
+          if (!follow1 || !follow2) {
+            throw new BadRequestException('Этот пользователь разрешает писать только друзьям (нужна взаимная подписка)');
+          }
+        }
       }
 
       // Ищем существующую комнату (с блокировкой строки)

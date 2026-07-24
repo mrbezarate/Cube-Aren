@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Follow } from '../../entities/follow.entity';
 import { User } from '../../entities/user.entity';
+import { PrivacySettings, PrivacyLevel } from '../../entities/privacy-settings.entity';
 import { toUserCard } from '../../common/user-view';
 
 @Injectable()
@@ -12,6 +13,8 @@ export class FriendsService {
     private followRepo: Repository<Follow>,
     @InjectRepository(User)
     private userRepo: Repository<User>,
+    @InjectRepository(PrivacySettings)
+    private privacySettingsRepo: Repository<PrivacySettings>,
   ) {}
 
   // Подписаться на пользователя (как в TikTok)
@@ -123,8 +126,21 @@ export class FriendsService {
   }
 
   // Получить список друзей = взаимные подписки
-  async getFriends(userId: string) {
+  async getFriends(userId: string, currentUserId?: string) {
     console.log('[FriendsService] Getting friends for userId:', userId);
+
+    if (currentUserId && currentUserId !== userId) {
+      const privacy = await this.privacySettingsRepo.findOne({ where: { userId } });
+      if (privacy) {
+        if (privacy.canSeeFriends === PrivacyLevel.NOBODY) {
+          return [];
+        }
+        if (privacy.canSeeFriends === PrivacyLevel.FRIENDS) {
+          const isFriend = await this.areFriends(userId, currentUserId);
+          if (!isFriend) return [];
+        }
+      }
+    }
     
     // Находим всех кто подписан на меня
     const followers = await this.followRepo.find({

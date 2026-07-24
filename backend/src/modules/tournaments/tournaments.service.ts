@@ -14,6 +14,7 @@ import { TournamentReport } from '../../entities/tournament-report.entity';
 import { User } from '../../entities/user.entity';
 import { Match } from '../../entities/match.entity';
 import { Bet, BetStatus } from '../../entities/bet.entity';
+import { UserPreferences } from '../../entities/user-preferences.entity';
 import { WalletService } from '../wallet/wallet.service';
 import { TransactionType } from '../../entities/transaction.entity';
 import { CreateTournamentDto } from './dto/create-tournament.dto';
@@ -36,10 +37,12 @@ export class TournamentsService {
     private matchesRepo: Repository<Match>,
     @InjectRepository(Bet)
     private betsRepo: Repository<Bet>,
+    @InjectRepository(UserPreferences)
+    private userPreferencesRepo: Repository<UserPreferences>,
     private walletService: WalletService,
   ) {}
 
-  async findAll(filters: FilterTournamentDto) {
+  async findAll(filters: FilterTournamentDto, userId?: string) {
     const {
       game,
       format,
@@ -58,6 +61,26 @@ export class TournamentsService {
     const qb = this.tournamentsRepo
       .createQueryBuilder('t')
       .leftJoinAndSelect('t.organizer', 'organizer');
+
+    // Если есть текущий пользователь, применяем его настройки
+    if (userId) {
+      const prefs = await this.userPreferencesRepo.findOne({ where: { userId } });
+      if (prefs) {
+        if (prefs.hideUninterestingTournaments) {
+          // Например скрываем слишком мелкие или определенные форматы
+          qb.andWhere('t.prizePool >= :prefMinPrize', { prefMinPrize: 100 }); // Условный минимум для интересных
+        }
+        if (prefs.showOnlyRegionalTournaments) {
+          const user = await this.usersRepo.findOne({ where: { id: userId } });
+          if (user?.country) {
+            qb.andWhere('t.region = :userRegion', { userRegion: user.country });
+          }
+        }
+        if (prefs.minPrizePoolFilter > 0) {
+          qb.andWhere('t.prizePool >= :prefPrizePool', { prefPrizePool: prefs.minPrizePoolFilter });
+        }
+      }
+    }
 
     if (game) qb.andWhere('t.game = :game', { game });
     if (format) qb.andWhere('t.format = :format', { format });
