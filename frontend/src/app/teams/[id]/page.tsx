@@ -338,422 +338,491 @@ export default function TeamDetailPage() {
   const winRate = team.wins + team.losses > 0 
     ? ((team.wins / (team.wins + team.losses)) * 100).toFixed(1)
     : '0.0';
-
   return (
-    <div className="min-h-screen bg-bg-primary pb-16">
+    <div className="min-h-screen bg-[#0a0a0c] pb-16 font-sans text-gray-300">
       
       {/* Hidden Upload Inputs */}
       <input type="file" ref={logoInputRef} onChange={handleLogoChange} accept="image/*" className="hidden" />
       <input type="file" ref={bannerInputRef} onChange={handleBannerChange} accept="image/*" className="hidden" />
 
-      {/* Navigation & Header */}
-      <div className="max-w-6xl mx-auto px-4 pt-6 pb-2">
-        <button
-          onClick={() => router.back()}
-          className="flex items-center gap-1.5 text-xs font-orbitron font-bold text-gray-400 hover:text-white transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" /> НАЗАД
-        </button>
+      {/* Navigation */}
+      <div className="w-full bg-black/80 backdrop-blur-md border-b border-zinc-800/80 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-2 text-xs font-orbitron font-bold text-zinc-500 hover:text-white uppercase tracking-widest transition-colors group"
+          >
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Назад в штаб
+          </button>
+        </div>
       </div>
 
-      {/* Profile Details Container - Large & Unified structure like user profile */}
-      <div className="max-w-6xl mx-auto px-4">
-        
-        {/* Main Header Card */}
-        <div className="bg-bg-secondary border border-border-subtle rounded-2xl overflow-hidden mb-6 shadow-2xl relative">
+      {/* Clan Hero Section */}
+      <div className="relative mb-20">
+        {/* Banner Base with angular cut */}
+        <div 
+          className="h-64 sm:h-96 w-full relative overflow-hidden"
+          style={{
+            clipPath: 'polygon(0 0, 100% 0, 100% 80%, 95% 100%, 0 100%)',
+            backgroundImage: team.bannerUrl 
+              ? `linear-gradient(to top, rgba(10,10,12,1) 0%, rgba(10,10,12,0.4) 100%), url(${team.bannerUrl})` 
+              : 'linear-gradient(45deg, #0a0a0c, #1a1a24)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
+        >
+          <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-20 mix-blend-overlay" />
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-yellow-600 to-transparent opacity-50" />
+        </div>
+
+        {/* Content Wrapper overlapping the banner */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-8 -mt-24 sm:-mt-40 relative z-10 flex flex-col md:flex-row gap-6 md:gap-10 items-start md:items-end">
           
-          {/* Header Cover Banner */}
-          <div
-            className="h-44 sm:h-52 bg-gradient-to-r from-accent-primary/20 via-accent-secondary/10 to-transparent relative"
-            style={
-              team.bannerUrl
-                ? {
-                    backgroundImage: `linear-gradient(rgba(10,10,15,0.4), rgba(10,10,15,0.85)), url(${team.bannerUrl})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                  }
-                : undefined
-            }
-          />
-
-          {/* User Profile-like Info Block */}
-          <div className="p-6 pt-0">
-            <div className="flex flex-col lg:flex-row lg:items-end gap-6 -mt-16 sm:-mt-20">
-              
-              {/* Logo Area */}
-              <div className="relative shrink-0">
-                <div className="h-32 w-32 rounded-2xl border-4 border-bg-secondary bg-bg-tertiary flex items-center justify-center overflow-hidden shadow-2xl">
-                  {team.logoUrl ? (
-                    <img src={team.logoUrl} alt={team.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <Shield className="h-16 w-16 text-accent-secondary" />
-                  )}
-                </div>
+          {/* Hexagon Logo */}
+          <div className="relative shrink-0 group z-20">
+            <div 
+              className="w-32 h-32 sm:w-56 sm:h-56 bg-zinc-900 p-1 shadow-[0_0_50px_rgba(202,138,4,0.15)] transition-all duration-500 group-hover:shadow-[0_0_80px_rgba(202,138,4,0.3)] relative"
+              style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-yellow-600/20 to-transparent pointer-events-none" />
+              <div 
+                className="w-full h-full bg-[#0d0d12] flex items-center justify-center overflow-hidden"
+                style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
+              >
+                {team.logoUrl ? (
+                  <img src={team.logoUrl} alt={team.name} className="w-full h-full object-cover group-hover:scale-110 group-hover:brightness-110 transition-all duration-700" />
+                ) : (
+                  <Shield className="h-16 w-16 sm:h-24 sm:w-24 text-zinc-700 group-hover:text-yellow-600 transition-colors" />
+                )}
               </div>
-
-              {/* Text Info */}
-              <div className="flex-1 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <h1 className="font-orbitron font-extrabold text-2xl sm:text-3xl text-white uppercase tracking-wide">
-                        {team.name}
-                      </h1>
-                      {team.tag && (
-                        <span className="text-accent-secondary text-lg sm:text-xl font-black font-orbitron">[{team.tag}]</span>
-                      )}
-                      <span className="text-xl sm:text-2xl" title="Флаг/Регион">{team.flag || '🏴'}</span>
-                    </div>
-
-                    <div className="flex items-center gap-4 text-xs text-gray-400 mt-2 flex-wrap">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5" />
-                        Основан: {formattedDate}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Crown className="w-3.5 h-3.5 text-accent-warning" />
-                        Лидер:{' '}
-                        <Link
-                          href={`/profile/${team.captainId}`}
-                          className="text-white hover:text-accent-secondary font-bold transition-colors"
-                        >
-                          {team.captainName || 'Капитан'}
-                        </Link>
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Compact Header Stats - Matches, Wins, Rating */}
-                  <div className="flex items-center gap-3 self-start sm:self-center">
-                    <div className="bg-bg-primary/50 border border-border-subtle p-2 px-3.5 rounded-xl text-center">
-                      <span className="text-[8px] uppercase font-bold text-text-tertiary tracking-widest block">TRP</span>
-                      <span className="font-orbitron font-bold text-sm text-white">{Number(team.rating).toFixed(0)}</span>
-                    </div>
-                    <div className="bg-bg-primary/50 border border-border-subtle p-2 px-3.5 rounded-xl text-center">
-                      <span className="text-[8px] uppercase font-bold text-text-tertiary tracking-widest block">Победы</span>
-                      <span className="font-orbitron font-bold text-sm text-green-400">{team.wins}</span>
-                    </div>
-                    <div className="bg-bg-primary/50 border border-border-subtle p-2 px-3.5 rounded-xl text-center">
-                      <span className="text-[8px] uppercase font-bold text-text-tertiary tracking-widest block">Винрейт</span>
-                      <span className="font-orbitron font-bold text-sm text-accent-warning">{winRate}%</span>
-                    </div>
-                  </div>
-
-                  {/* Action Button */}
-                  <div className="flex gap-2 self-start sm:self-end">
-                    {canManageSettings && (
-                      <Button 
-                        onClick={() => setIsEditModalOpen(true)}
-                        variant="secondary"
-                        className="flex items-center gap-1.5 py-2 px-4 text-xs font-orbitron"
-                      >
-                        <Settings className="w-4 h-4" />
-                        УПРАВЛЕНИЕ
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </div>
-
+            </div>
+            
+            {/* Rank overlay */}
+            <div 
+              className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-yellow-600 to-yellow-500 text-black font-black font-orbitron px-8 py-2 text-xs sm:text-sm tracking-widest shadow-[0_4px_20px_rgba(202,138,4,0.5)] whitespace-nowrap" 
+              style={{ clipPath: 'polygon(15px 0, 100% 0, calc(100% - 15px) 100%, 0 100%)' }}
+            >
+              TRP: {Number(team.rating).toFixed(0)}
             </div>
           </div>
 
-        </div>
+          {/* Text Info */}
+          <div className="flex-1 pb-4 md:pb-8 w-full z-10">
+            <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-8">
+              
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
+                  <h1 className="font-orbitron font-black text-4xl sm:text-6xl text-white uppercase tracking-tighter drop-shadow-2xl leading-none">
+                    {team.name}
+                  </h1>
+                  {team.tag && (
+                    <span className="text-yellow-500 text-3xl sm:text-5xl font-black font-orbitron tracking-widest opacity-90 leading-none">
+                      [{team.tag}]
+                    </span>
+                  )}
+                  <span className="text-2xl sm:text-4xl ml-2 drop-shadow-md leading-none" title="Регион">{team.flag || '🏴'}</span>
+                </div>
 
-        {/* Layout Grid - Details sections */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="flex items-center gap-4 sm:gap-8 text-xs sm:text-sm text-zinc-400 font-mono uppercase tracking-widest flex-wrap">
+                  <span className="flex items-center gap-2 bg-zinc-900/50 px-3 py-1.5 border border-zinc-800/50" style={{ clipPath: 'polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px)' }}>
+                    <Calendar className="w-4 h-4 text-zinc-500" />
+                    Основан: <span className="text-zinc-200">{formattedDate}</span>
+                  </span>
+                  <span className="flex items-center gap-2 bg-zinc-900/50 px-3 py-1.5 border border-zinc-800/50" style={{ clipPath: 'polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px)' }}>
+                    <Crown className="w-4 h-4 text-yellow-500" />
+                    Коммандер: 
+                    <Link href={`/profile/${team.captainId}`} className="text-white hover:text-yellow-400 font-bold transition-colors">
+                      {team.captainName || 'Капитан'}
+                    </Link>
+                  </span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap sm:flex-nowrap gap-3 w-full xl:w-auto">
+                {canManageSettings && (
+                  <button 
+                    onClick={() => setIsEditModalOpen(true)}
+                    className="flex-1 sm:flex-none bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white px-8 py-3.5 font-orbitron font-bold uppercase tracking-widest transition-all text-xs flex items-center justify-center gap-3 border border-zinc-700/50 group shadow-lg"
+                    style={{ clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)' }}
+                  >
+                    <Settings className="w-4 h-4 group-hover:rotate-90 transition-transform" /> Управление
+                  </button>
+                )}
+
+                {!isCaptain && !isMember && team.isRecruiting && !team.hasPendingRequest && (
+                  <button
+                    onClick={handleJoin}
+                    disabled={joining}
+                    className="flex-1 sm:flex-none bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-black px-10 py-3.5 font-orbitron font-black uppercase tracking-widest transition-all text-xs disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(202,138,4,0.3)] hover:shadow-[0_0_30px_rgba(202,138,4,0.5)]"
+                    style={{ clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)' }}
+                  >
+                    {joining ? 'Отправка...' : 'Вступить в ряды'}
+                  </button>
+                )}
+
+                {!isCaptain && !isMember && team.hasPendingRequest && (
+                  <div 
+                    className="flex-1 sm:flex-none bg-zinc-900 text-yellow-500 px-8 py-3.5 font-orbitron font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-3 border border-yellow-600/30 shadow-inner"
+                    style={{ clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)' }}
+                  >
+                    <Check className="w-4 h-4" /> Ожидание ответа
+                  </div>
+                )}
+
+                {isMember && !isCaptain && (
+                  <button
+                    
+                    className="flex-1 sm:flex-none bg-zinc-900 hover:bg-red-950 text-red-500 hover:text-red-400 px-8 py-3.5 font-orbitron font-bold uppercase tracking-widest transition-all text-xs flex items-center justify-center gap-3 border border-zinc-800 hover:border-red-900/50"
+                    style={{ clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)' }}
+                  >
+                    <UserX className="w-4 h-4" /> Покинуть клан
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Layout Grid - Details sections */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* Main Info Area */}
+        <div className="lg:col-span-2 space-y-8">
           
-          {/* Main Info Area: Description and Members */}
-          <div className="lg:col-span-2 space-y-6">
-            
-            {/* Description */}
-            <div className="bg-bg-secondary border border-border-subtle p-5 rounded-2xl space-y-3 shadow-xl">
-              <h3 className="font-orbitron font-bold text-sm text-white uppercase tracking-wider flex items-center gap-2">
-                <span>📝 Описание клана</span>
+          {/* Description */}
+          <div className="relative group">
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-zinc-800 to-zinc-900 opacity-50 group-hover:opacity-100 transition-opacity" style={{ clipPath: 'polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px)' }}></div>
+            <div className="bg-[#111116] p-6 relative" style={{ clipPath: 'polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px)' }}>
+              <h3 className="font-orbitron font-black text-sm text-zinc-500 uppercase tracking-widest flex items-center gap-3 mb-4">
+                <span className="w-2 h-2 bg-yellow-600 rounded-sm"></span>
+                Устав / Описание
               </h3>
-              <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-line">
+              <p className="text-zinc-300 text-sm leading-relaxed whitespace-pre-line font-mono">
                 {team.description || 'Капитан пока не добавил описание клана.'}
               </p>
             </div>
+          </div>
 
-            {/* Members List */}
-            <div className="bg-bg-secondary border border-border-subtle p-5 rounded-2xl space-y-4 shadow-xl">
-              <div className="flex justify-between items-center pb-2 border-b border-border-subtle">
-                <h3 className="font-orbitron font-bold text-sm text-white uppercase tracking-wider flex items-center gap-2">
-                  <Users className="w-4 h-4 text-accent-secondary" />
-                  <span>Состав клана ({team.members.length} / {team.maxMembers})</span>
-                </h3>
-              </div>
+          {/* Members List */}
+          <div className="space-y-4">
+            <div className="flex justify-between items-center pb-2 border-b-2 border-zinc-800/50">
+              <h3 className="font-orbitron font-black text-lg text-white uppercase tracking-widest flex items-center gap-3">
+                <Users className="w-5 h-5 text-yellow-600" />
+                Личный состав <span className="text-zinc-500 text-sm">[{team.members.length}/{team.maxMembers}]</span>
+              </h3>
+            </div>
 
-              <div className="space-y-3">
-                {team.members.map((member) => {
-                  const user = member.user;
-                  const formattedJoinDate = format(new Date(member.joinedAt), 'd MMM yyyy', { locale: ru });
-                  const isUserCaptain = member.role === 'captain' || user.id === team.captainId;
-                  const isUserVice = member.role === 'vice_captain';
-                  const isUserMod = member.role === 'moderator';
-                  
-                  const isTargetSelf = user.id === currentUser?.id;
-                  
-                  return (
-                    <div
-                      key={member.id}
-                      className="p-3.5 rounded-xl border border-border-subtle flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all"
-                      style={
-                        user.cardBannerUrl
-                          ? {
-                              backgroundImage: `linear-gradient(90deg, rgba(20, 20, 30, 0.95) 0%, rgba(20, 20, 30, 0.85) 100%), url(${user.cardBannerUrl})`,
-                              backgroundSize: 'cover',
-                              backgroundPosition: 'center',
-                              borderColor: 'var(--border-subtle)'
-                            }
-                          : { backgroundColor: 'rgba(255, 255, 255, 0.01)' }
-                      }
-                    >
-                      <div className="flex items-center gap-3">
-                        <Link
-                          href={`/profile/${user.id}`}
-                          className="w-10 h-10 rounded-lg border border-border-subtle bg-bg-primary flex items-center justify-center relative hover:border-accent-secondary transition-colors shrink-0"
-                        >
-                          <Avatar src={user.avatarUrl} alt={user.displayName || user.username} className="w-10 h-10 rounded-lg" />
-                          {isUserCaptain && (
-                            <Crown className="w-4 h-4 text-accent-warning absolute -top-2 -right-1.5 rotate-12" />
-                          )}
-                        </Link>
-                        <div>
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <Link
-                              href={`/profile/${user.id}`}
-                              className="text-xs sm:text-sm font-bold text-white hover:text-accent-secondary transition-colors font-orbitron"
-                            >
-                              {user.displayName || user.username}
-                            </Link>
-                            {user.gender && <GenderIcon gender={user.gender as any} size="sm" />}
-                            
-                            {/* Badges for roles */}
-                            {isUserCaptain ? (
-                              <span className="text-[8px] bg-accent-warning/10 border border-accent-warning/30 text-accent-warning px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Лидер</span>
-                            ) : isUserVice ? (
-                              <span className="text-[8px] bg-accent-primary/10 border border-accent-primary/30 text-accent-primary px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Зам</span>
-                            ) : isUserMod ? (
-                              <span className="text-[8px] bg-accent-secondary/10 border border-accent-secondary/30 text-accent-secondary px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Модер</span>
-                            ) : (
-                              <span className="text-[8px] bg-white/5 border border-white/10 text-gray-400 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Боец</span>
-                            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {team.members.map((member) => {
+                const user = member.user;
+                const formattedJoinDate = format(new Date(member.joinedAt), 'd MMM yyyy', { locale: ru });
+                const isUserCaptain = member.role === 'captain' || user.id === team.captainId;
+                const isUserVice = member.role === 'vice_captain';
+                const isUserMod = member.role === 'moderator';
+                const isTargetSelf = user.id === currentUser?.id;
+                
+                return (
+                  <div
+                    key={member.id}
+                    className="relative bg-[#111116] border border-zinc-800/80 p-4 flex flex-col justify-between transition-all hover:bg-[#16161c] hover:border-zinc-700 group"
+                    style={{
+                      clipPath: 'polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px)',
+                      backgroundImage: user.cardBannerUrl 
+                        ? `linear-gradient(90deg, rgba(17,17,22,0.95) 0%, rgba(17,17,22,0.85) 100%), url(${user.cardBannerUrl})`
+                        : 'none',
+                      backgroundSize: 'cover'
+                    }}
+                  >
+                    <div className="flex items-start gap-4">
+                      {/* Avatar Wrapper */}
+                      <Link
+                        href={`/profile/${user.id}`}
+                        className="w-12 h-12 border-2 border-zinc-800 bg-black flex items-center justify-center relative hover:border-yellow-600 transition-colors shrink-0"
+                        style={{ clipPath: 'polygon(0 0, 100% 0, 100% 80%, 80% 100%, 0 100%)' }}
+                      >
+                        <Avatar src={user.avatarUrl} alt={user.displayName || user.username} className="w-full h-full" />
+                        {isUserCaptain && (
+                          <div className="absolute -top-1 -right-1 text-yellow-500 drop-shadow-[0_0_5px_rgba(234,179,8,1)]">
+                            <Crown className="w-4 h-4 fill-current" />
                           </div>
-                          <span className="text-[9px] text-gray-500 block">В клане с {formattedJoinDate}</span>
+                        )}
+                      </Link>
+                      
+                      {/* User Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Link
+                            href={`/profile/${user.id}`}
+                            className="text-sm font-black text-white hover:text-yellow-500 transition-colors font-orbitron truncate uppercase tracking-wide"
+                          >
+                            {user.displayName || user.username}
+                          </Link>
+                          {user.gender && <GenderIcon gender={user.gender as any} size="sm" />}
+                        </div>
+                        
+                        <div className="flex items-center gap-2 mt-1">
+                          {/* Role Badges */}
+                          {isUserCaptain ? (
+                            <span className="text-[9px] bg-yellow-600/10 border border-yellow-600/30 text-yellow-500 px-1.5 py-0.5 uppercase font-black tracking-widest">Лидер</span>
+                          ) : isUserVice ? (
+                            <span className="text-[9px] bg-orange-600/10 border border-orange-600/30 text-orange-500 px-1.5 py-0.5 uppercase font-black tracking-widest">Зам</span>
+                          ) : isUserMod ? (
+                            <span className="text-[9px] bg-blue-600/10 border border-blue-600/30 text-blue-500 px-1.5 py-0.5 uppercase font-black tracking-widest">Модер</span>
+                          ) : (
+                            <span className="text-[9px] bg-zinc-800 border border-zinc-700 text-zinc-400 px-1.5 py-0.5 uppercase font-bold tracking-widest">Боец</span>
+                          )}
+                          <span className="text-[9px] text-zinc-500 font-mono">с {formattedJoinDate}</span>
                         </div>
                       </div>
+                    </div>
 
-                      {/* Controls for Roles and Kick */}
-                      <div className="flex items-center gap-2 self-stretch sm:self-auto justify-end">
-                        
-                        {/* Role Selector Dropdown (Captain Only) */}
-                        {canManageRoles && !isUserCaptain && !isTargetSelf && (
-                          <select
-                            value={member.role}
-                            onChange={(e) => handleRoleChange(user.id, user.displayName || user.username, e.target.value)}
-                            className="bg-bg-primary border border-border-subtle rounded-lg text-[10px] text-gray-300 py-1 px-2 focus:outline-none"
-                          >
-                            <option value="member">Боец</option>
-                            <option value="moderator">Модератор</option>
-                            <option value="vice_captain">Зам. капитана</option>
-                            <option value="captain">Передать капитанство</option>
-                          </select>
-                        )}
+                    {/* Controls for Roles and Kick */}
+                    <div className="mt-4 flex items-center justify-end gap-2 pt-3 border-t border-zinc-800/50">
+                      {canManageRoles && !isUserCaptain && !isTargetSelf && (
+                        <select
+                          value={member.role}
+                          onChange={(e) => handleRoleChange(user.id, user.displayName || user.username, e.target.value)}
+                          className="bg-black border border-zinc-800 text-[10px] text-zinc-300 py-1 px-2 uppercase font-bold tracking-wider focus:border-yellow-600 focus:outline-none transition-colors"
+                          style={{ clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)' }}
+                        >
+                          <option value="member">Боец</option>
+                          <option value="moderator">Модератор</option>
+                          <option value="vice_captain">Зам. капитана</option>
+                          <option value="captain">Сделать Лидером</option>
+                        </select>
+                      )}
 
-                        {/* Kick member button */}
-                        {((isCaptain && !isUserCaptain) || (isViceCaptain && !isUserCaptain && !isUserVice)) && !isTargetSelf && (
-                          <button
-                            onClick={() => handleKick(user.id)}
-                            title="Исключить игрока"
-                            className="p-1.5 rounded bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 hover:text-red-300 transition-colors"
-                          >
-                            <UserX className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
+                      {((isCaptain && !isUserCaptain) || (isViceCaptain && !isUserCaptain && !isUserVice)) && !isTargetSelf && (
+                        <button
+                          onClick={() => handleKick(user.id)}
+                          title="Исключить игрока"
+                          className="p-1 bg-zinc-900 border border-zinc-800 hover:border-red-900 text-zinc-600 hover:text-red-500 transition-colors"
+                          style={{ clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)' }}
+                        >
+                          <UserX className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Sidebar Area */}
+        <div className="space-y-6">
+          
+          {/* Stats Block */}
+          <div className="bg-[#111116] border border-zinc-800/80 p-5 relative" style={{ clipPath: 'polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px)' }}>
+            <h3 className="font-orbitron font-black text-xs text-zinc-500 uppercase tracking-widest pb-3 border-b border-zinc-800/50 mb-4">
+              Боевая Статистика
+            </h3>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div className="bg-gradient-to-br from-green-900/20 to-transparent border border-green-900/30 p-3 text-center" style={{ clipPath: 'polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)' }}>
+                <span className="text-[10px] uppercase text-green-500 font-black tracking-widest block mb-1">Победы</span>
+                <span className="font-orbitron font-black text-2xl text-white">{team.wins}</span>
+              </div>
+              <div className="bg-gradient-to-br from-red-900/20 to-transparent border border-red-900/30 p-3 text-center" style={{ clipPath: 'polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)' }}>
+                <span className="text-[10px] uppercase text-red-500 font-black tracking-widest block mb-1">Поражения</span>
+                <span className="font-orbitron font-black text-2xl text-white">{team.losses}</span>
+              </div>
+            </div>
+            <div className="bg-gradient-to-r from-yellow-600/10 to-transparent border border-yellow-600/20 p-3 flex items-center justify-between" style={{ clipPath: 'polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)' }}>
+              <span className="text-[10px] uppercase text-yellow-600 font-black tracking-widest">Винрейт</span>
+              <span className="font-orbitron font-black text-xl text-yellow-500">{winRate}%</span>
+            </div>
+          </div>
+
+          {/* Supported Games */}
+          <div className="bg-[#111116] border border-zinc-800/80 p-5 relative" style={{ clipPath: 'polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px)' }}>
+            <h3 className="font-orbitron font-black text-xs text-zinc-500 uppercase tracking-widest pb-3 border-b border-zinc-800/50 mb-4 flex items-center gap-2">
+              <Swords className="w-4 h-4 text-zinc-400" />
+              Дисциплины
+            </h3>
+            {team.supportedGames && team.supportedGames.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {team.supportedGames.map(gameId => {
+                  const game = GAMES.find(g => g.id === gameId);
+                  return (
+                    <div 
+                      key={gameId}
+                      className="bg-black border border-zinc-800 px-3 py-1.5 flex items-center gap-1.5 group hover:border-yellow-600 transition-colors"
+                      style={{ clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)' }}
+                    >
+                      <span className="grayscale opacity-50 group-hover:grayscale-0 group-hover:opacity-100 transition-all">{game?.icon || '🎮'}</span>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 group-hover:text-yellow-500">{getGameName(gameId as any)}</span>
                     </div>
                   );
                 })}
               </div>
-            </div>
+            ) : (
+              <p className="text-xs text-zinc-600 font-mono uppercase">Дисциплины не указаны</p>
+            )}
           </div>
 
-          {/* Sidebar Area: Stats, Disciplines, Requests */}
-          <div className="space-y-6">
-            
-            {/* Stats Block */}
-            <div className="bg-bg-secondary border border-border-subtle p-5 rounded-2xl space-y-4 shadow-xl">
-              <h3 className="font-orbitron font-bold text-xs text-gray-400 uppercase tracking-widest pb-2 border-b border-border-subtle">
-                Статистика Битв
+          {/* Pending Requests */}
+          {canManageRequests && (
+            <div className="bg-[#111116] border border-zinc-800/80 p-5 relative" style={{ clipPath: 'polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px)' }}>
+              <h3 className="font-orbitron font-black text-xs text-zinc-500 uppercase tracking-widest pb-3 border-b border-zinc-800/50 mb-4 flex items-center gap-2">
+                <Target className="w-4 h-4 text-zinc-400" />
+                Рекрутинг ({pendingRequests.length})
               </h3>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-3 text-center">
-                  <span className="text-[9px] uppercase text-green-400 font-bold block">Победы</span>
-                  <span className="font-orbitron font-bold text-lg text-white">{team.wins}</span>
-                </div>
-                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-center">
-                  <span className="text-[9px] uppercase text-red-400 font-bold block">Поражения</span>
-                  <span className="font-orbitron font-bold text-lg text-white">{team.losses}</span>
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <div className="flex justify-between text-xs text-gray-400 mb-1">
-                  <span>Винрейт</span>
-                  <span className="font-orbitron font-bold text-white">
-                    {team.wins + team.losses > 0 
-                      ? ((team.wins / (team.wins + team.losses)) * 100).toFixed(1)
-                      : '0.0'}%
-                  </span>
-                </div>
-                <div className="h-2 rounded-full bg-white/5 overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-accent-secondary to-accent-primary rounded-full"
-                    style={{
-                      width: `${
-                        team.wins + team.losses > 0 
-                          ? (team.wins / (team.wins + team.losses)) * 100 
-                          : 0
-                      }%`
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Game Disciplines */}
-            <div className="bg-bg-secondary border border-border-subtle p-5 rounded-2xl space-y-3 shadow-xl">
-              <h3 className="font-orbitron font-bold text-xs text-gray-400 uppercase tracking-widest pb-2 border-b border-border-subtle">
-                Дисциплины
-              </h3>
-              <div className="flex flex-wrap gap-2 pt-1">
-                {(team.supportedGames || [team.game]).map((gameId) => (
-                  <Badge key={gameId} variant="blue" className="font-orbitron">
-                    {getGameName(gameId)}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-
-            {/* Inbound Requests Panel (Moderators/Captains Only) */}
-            {canManageRequests && (
-              <div className="bg-bg-secondary border border-border-subtle p-5 rounded-2xl space-y-4 shadow-xl">
-                <h3 className="font-orbitron font-bold text-xs text-gray-400 uppercase tracking-widest pb-2 border-b border-border-subtle flex items-center gap-1.5">
-                  <MessageSquare className="w-4 h-4 text-accent-primary" />
-                  <span>Запросы на вступление</span>
-                </h3>
-
-                {pendingRequests.length === 0 ? (
-                  <p className="text-[10px] text-gray-500 italic py-2 text-center">Нет новых заявок.</p>
-                ) : (
-                  <div className="space-y-3 max-h-[300px] overflow-y-auto">
-                    {pendingRequests.map((req) => (
-                      <div key={req.id} className="rounded-xl border border-border-subtle p-3 bg-bg-tertiary/40 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Avatar src={req.user?.avatarUrl} alt={req.user?.displayName || req.user?.username || ''} className="w-7 h-7 rounded-lg" />
-                          <div className="min-w-0 flex-1">
-                            <Link href={`/profile/${req.user?.id}`} className="text-xs font-bold text-white hover:text-accent-secondary transition-colors truncate block">
-                              {req.user?.displayName || req.user?.username}
-                            </Link>
-                            <span className="text-[8px] text-gray-500 block">Запрос на рассмотрении</span>
-                          </div>
-                        </div>
-
-                        {req.message && (
-                          <p className="text-[10px] text-gray-400 bg-black/40 p-1.5 rounded italic">
-                            "{req.message}"
-                          </p>
-                        )}
-
-                        <div className="flex gap-2 justify-end pt-1">
-                          <button
-                            onClick={() => handleRequestAction(req.id, 'reject')}
-                            className="px-2.5 py-1 rounded bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[10px] transition-colors"
+              
+              {pendingRequests.length === 0 ? (
+                <p className="text-xs text-zinc-600 font-mono uppercase text-center py-4">Нет новых заявок</p>
+              ) : (
+                <div className="space-y-3">
+                  {pendingRequests.map((req) => (
+                    <div key={req.id} className="bg-black border border-zinc-800 p-3" style={{ clipPath: 'polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)' }}>
+                      <div className="flex items-center gap-3 mb-3">
+                        <Link href={`/profile/${req.user.id}`}>
+                          <Avatar src={req.user.avatarUrl} alt={req.user.displayName || req.user.username} className="w-8 h-8 rounded-none border border-zinc-700" />
+                        </Link>
+                        <div>
+                          <Link
+                            href={`/profile/${req.user.id}`}
+                            className="text-xs font-black font-orbitron uppercase text-white hover:text-yellow-500 transition-colors block"
                           >
-                            Отклонить
-                          </button>
-                          <button
-                            onClick={() => handleRequestAction(req.id, 'approve')}
-                            className="px-2.5 py-1 rounded bg-green-500/20 hover:bg-green-500/30 text-green-400 text-[10px] font-bold transition-colors"
-                          >
-                            Принять
-                          </button>
+                            {req.user.displayName || req.user.username}
+                          </Link>
+                          <span className="text-[9px] text-zinc-500 font-mono">{format(new Date(req.createdAt), 'd MMM HH:mm', { locale: ru })}</span>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+                      
+                      {req.message && (
+                        <div className="bg-zinc-900/50 p-2 mb-3 text-[10px] text-zinc-400 border-l-2 border-zinc-700 font-mono">
+                          {req.message}
+                        </div>
+                      )}
 
-            {/* Recruitment Join Module (For visitors) */}
-            {currentUser && !isMember && (
-              <div className="bg-bg-secondary border border-border-subtle p-5 rounded-2xl space-y-4 shadow-xl">
-                <h3 className="font-orbitron font-bold text-xs text-gray-400 uppercase tracking-widest pb-1">
-                  Присоединиться к клану
-                </h3>
-                {team.isRecruiting ? (
-                  <>
-                    {team.hasPendingRequest ? (
-                      <Button variant="secondary" className="w-full text-xs font-orbitron" disabled>
-                        Заявка на рассмотрении
-                      </Button>
-                    ) : team.membersCount >= team.maxMembers ? (
-                      <Button variant="secondary" className="w-full text-xs font-orbitron" disabled>
-                        Клан заполнен
-                      </Button>
-                    ) : (
-                      <div className="space-y-3">
-                        <textarea
-                          value={joinMessage}
-                          onChange={(e) => setJoinMessage(e.target.value)}
-                          placeholder="Сообщение лидеру клана..."
-                          rows={3}
-                          className="w-full px-3 py-2 text-xs bg-bg-primary border border-border-subtle rounded-lg text-white"
-                        />
-                        <Button
-                          onClick={handleJoin}
-                          loading={joining}
-                          variant="primary"
-                          className="w-full text-xs font-orbitron font-bold"
+                      <div className="flex gap-2">
+                        <button
+                          
+                          className="flex-1 bg-green-900/20 hover:bg-green-900/40 text-green-500 border border-green-900/50 py-1.5 text-[10px] font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-1"
+                          style={{ clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)' }}
                         >
-                          Отправить заявку
-                        </Button>
+                          <UserCheck className="w-3 h-3" /> Принять
+                        </button>
+                        <button
+                          
+                          className="flex-1 bg-red-900/20 hover:bg-red-900/40 text-red-500 border border-red-900/50 py-1.5 text-[10px] font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-1"
+                          style={{ clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)' }}
+                        >
+                          <X className="w-3 h-3" /> Отклонить
+                        </button>
                       </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="text-xs text-red-400 italic text-center py-2 flex items-center justify-center gap-1.5 bg-red-500/5 border border-red-500/15 rounded-lg">
-                    <ShieldAlert className="w-4 h-4 shrink-0" />
-                    <span>Набор в клан временно закрыт.</span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
-
       </div>
 
-      {/* Edit Settings Modal */}
+      {/* Edit Modal (unchanged styling for now, just wrapped in standard modal) */}
       <Modal
         isOpen={isEditModalOpen}
         onClose={() => !savingSettings && setIsEditModalOpen(false)}
-        title="⚙️ Управление настройками клана"
+        title="Настройки клана"
       >
-        <div className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
+        <div className="space-y-5">
           
+          <div className="space-y-1">
+            <label className="text-[10px] uppercase text-gray-400 font-bold">Тег (1-5 символов)</label>
+            <input
+              value={editTag}
+              onChange={(e) => setEditTag(e.target.value.toUpperCase())}
+              maxLength={5}
+              placeholder="TAG"
+              className="w-full px-3 py-2 bg-bg-primary border border-border-subtle rounded-lg text-xs font-orbitron font-bold text-white focus:border-accent-secondary outline-none"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[10px] uppercase text-gray-400 font-bold">Флаг/Регион</label>
+            <div className="flex gap-2 mb-2 flex-wrap">
+              {FLAGS.map(f => (
+                <button
+                  key={f.emoji}
+                  onClick={() => setEditFlag(f.emoji)}
+                  className={`p-2 rounded-lg border transition-all text-xl ${
+                    editFlag === f.emoji 
+                      ? 'border-accent-secondary bg-accent-secondary/10' 
+                      : 'border-border-subtle bg-bg-primary hover:border-gray-500'
+                  }`}
+                  title={f.name}
+                >
+                  {f.emoji}
+                </button>
+              ))}
+            </div>
+            <input
+              value={editCustomFlag}
+              onChange={(e) => {
+                setEditCustomFlag(e.target.value);
+                setEditFlag(e.target.value);
+              }}
+              placeholder="Свой эмодзи (опционально)"
+              className="w-full px-3 py-2 bg-bg-primary border border-border-subtle rounded-lg text-xs text-white"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[10px] uppercase text-gray-400 font-bold">Описание клана</label>
+            <textarea
+              value={editDescription}
+              onChange={(e) => setEditDescription(e.target.value)}
+              placeholder="Расскажите о вашем клане, правилах, целях..."
+              rows={4}
+              className="w-full px-3 py-2 bg-bg-primary border border-border-subtle rounded-lg text-xs text-white focus:border-accent-secondary outline-none resize-none"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[10px] uppercase text-gray-400 font-bold">Игры</label>
+            <div className="flex flex-wrap gap-2">
+              {GAMES.map(game => (
+                <button
+                  key={game.id}
+                  onClick={() => toggleEditSupportedGame(game.id)}
+                  className={`px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase flex items-center gap-1.5 transition-all ${
+                    editSupportedGames.includes(game.id)
+                      ? 'border-accent-secondary bg-accent-secondary/10 text-white'
+                      : 'border-border-subtle bg-bg-primary text-gray-400 hover:text-gray-200'
+                  }`}
+                >
+                  <span className={editSupportedGames.includes(game.id) ? '' : 'grayscale opacity-50'}>{game.icon}</span>
+                  {game.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 p-3 bg-bg-primary border border-border-subtle rounded-lg cursor-pointer hover:border-gray-600 transition-colors"
+               onClick={() => setEditRecruiting(!editRecruiting)}>
+            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+              editRecruiting ? 'bg-accent-secondary border-accent-secondary' : 'border-gray-600'
+            }`}>
+              {editRecruiting && <Check className="w-3 h-3 text-white" />}
+            </div>
+            <div className="flex-1">
+              <span className="text-xs font-bold text-white block">Открытый набор</span>
+              <span className="text-[10px] text-gray-400">Разрешить игрокам подавать заявки на вступление</span>
+            </div>
+          </div>
+
           {/* Logo Input URL / File Upload */}
           <div className="space-y-1">
-            <label className="text-[10px] uppercase text-gray-400 font-bold">Логотип клана (URL, картинка или GIF)</label>
+            <label className="text-[10px] uppercase text-gray-400 font-bold">Логотип (URL или картинка)</label>
             <div className="flex gap-2">
               <input
                 value={editLogoUrl}
                 onChange={(e) => setEditLogoUrl(e.target.value)}
-                placeholder="https://example.com/logo.gif или загрузите"
+                placeholder="https://example.com/logo.png или загрузите"
                 className="flex-1 px-3 py-2 bg-bg-primary border border-border-subtle rounded-lg text-xs text-white"
               />
               <div className="relative">
@@ -762,10 +831,10 @@ export default function TeamDetailPage() {
                   accept="image/png, image/jpeg, image/jpg, image/gif"
                   onChange={handleLogoChange}
                   disabled={uploadingLogo}
-                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer disabled:cursor-not-allowed"
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
                 />
-                <Button
-                  variant="secondary"
+                <Button 
+                  variant="secondary" 
                   disabled={uploadingLogo}
                   type="button"
                   className="py-2 px-3 text-xs shrink-0"
@@ -797,10 +866,10 @@ export default function TeamDetailPage() {
                   accept="image/png, image/jpeg, image/jpg, image/gif"
                   onChange={handleBannerChange}
                   disabled={uploadingBanner}
-                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer disabled:cursor-not-allowed"
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
                 />
-                <Button
-                  variant="secondary"
+                <Button 
+                  variant="secondary" 
                   disabled={uploadingBanner}
                   type="button"
                   className="py-2 px-3 text-xs shrink-0"
@@ -816,109 +885,11 @@ export default function TeamDetailPage() {
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label className="text-[10px] uppercase text-gray-400 font-bold">Тег команды</label>
-              <input
-                value={editTag}
-                onChange={(e) => setEditTag(e.target.value.toUpperCase())}
-                placeholder="TAG"
-                maxLength={5}
-                className="w-full px-3 py-2 bg-bg-primary border border-border-subtle rounded-lg text-xs text-white uppercase font-bold"
-              />
-            </div>
-            
-            <div className="space-y-1">
-              <label className="text-[10px] uppercase text-gray-400 font-bold">Флаг / Регион</label>
-              <div className="flex gap-2">
-                <select
-                  value={editFlag}
-                  onChange={(e) => {
-                    setEditFlag(e.target.value);
-                    setEditCustomFlag('');
-                  }}
-                  className="w-full px-3 py-2 bg-bg-primary border border-border-subtle rounded-lg text-xs text-white"
-                >
-                  {FLAGS.map((f) => (
-                    <option key={f.emoji} value={f.emoji}>
-                      {f.emoji} {f.name}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  value={editCustomFlag}
-                  onChange={(e) => setEditCustomFlag(e.target.value)}
-                  placeholder="Свой эмодзи"
-                  className="w-24 px-2 py-2 bg-bg-primary border border-border-subtle rounded-lg text-xs text-center text-white"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-[10px] uppercase text-gray-400 font-bold">Описание клана</label>
-            <textarea
-              value={editDescription}
-              onChange={(e) => setEditDescription(e.target.value)}
-              placeholder="Введите описание вашего клана..."
-              rows={3}
-              className="w-full px-3 py-2 bg-bg-primary border border-border-subtle rounded-lg text-xs text-white resize-none"
-            />
-          </div>
-
-          {/* Supported Games list (Multi-toggle) */}
-          <div className="rounded-xl border border-border-subtle p-3 bg-bg-tertiary/40">
-            <div className="text-[10px] uppercase font-orbitron text-gray-400 mb-2 font-bold flex justify-between items-center">
-              <span>Игры клана (выберите 1-3) *</span>
-              <span className="text-[8px] text-text-tertiary uppercase">Первая выбранная — основная</span>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              {GAMES.map((item) => {
-                const selected = editSupportedGames.includes(item.id);
-                const order = editSupportedGames.indexOf(item.id);
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => toggleEditSupportedGame(item.id)}
-                    className={`relative flex flex-col items-center gap-1 py-2.5 rounded-lg border text-[11px] transition-all ${
-                      selected
-                        ? 'border-accent-primary bg-accent-primary/10 text-white font-semibold'
-                        : 'border-border-subtle bg-bg-primary/50 text-text-secondary hover:border-border-default hover:text-white'
-                    }`}
-                  >
-                    {selected && (
-                      <span className="absolute top-1 right-1 w-4 h-4 bg-accent-primary rounded-full flex items-center justify-center text-[8px] font-bold text-white">
-                        {order === 0 ? '👑' : order + 1}
-                      </span>
-                    )}
-                    <span className="text-lg">{item.icon}</span>
-                    <span>{item.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Recruiting Toggle */}
-          <div className="flex items-center justify-between p-3 rounded-xl border border-border-subtle bg-bg-tertiary/40">
-            <div>
-              <div className="text-xs font-bold text-white">Набор в клан открыт</div>
-              <div className="text-[10px] text-gray-500">Позволяет другим игрокам присылать заявки</div>
-            </div>
-            <input
-              type="checkbox"
-              checked={editRecruiting}
-              onChange={(e) => setEditRecruiting(e.target.checked)}
-              className="w-5 h-5 accent-accent-primary cursor-pointer"
-            />
-          </div>
-
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-border-subtle">
+          <div className="flex justify-end gap-3 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setIsEditModalOpen(false)} disabled={savingSettings}>
               Отмена
             </Button>
-            <Button onClick={handleSaveSettings} loading={savingSettings}>
+            <Button variant="primary" onClick={handleSaveSettings} loading={savingSettings}>
               Сохранить
             </Button>
           </div>
@@ -946,7 +917,7 @@ export default function TeamDetailPage() {
             <Button variant="secondary" onClick={() => setIsTransferModalOpen(false)}>
               Отмена
             </Button>
-            <Button variant="primary" onClick={handleConfirmTransfer} className="bg-red-600 hover:bg-red-500 border-none">
+            <Button variant="danger" onClick={handleConfirmTransfer}>
               Передать права
             </Button>
           </div>
