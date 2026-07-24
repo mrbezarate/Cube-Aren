@@ -1,5 +1,5 @@
 export type Gender = 'male' | 'female' | 'other';
-export type GameType = 'cs2' | 'dota2' | 'valorant' | 'lol' | 'pubg' | 'apex' | 'custom';
+export type GameType = 'cs2' | 'dota2' | 'valorant' | 'lol' | 'pubg' | 'apex' | 'fortnite' | 'rocket_league' | 'overwatch2' | 'rainbow6' | 'fifa' | 'custom';
 
 export interface UserCard {
   id: string;

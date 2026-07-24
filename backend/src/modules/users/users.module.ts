@@ -12,6 +12,7 @@ import { TeamMember } from '../../entities/team-member.entity';
 import { ProfileView } from '../../entities/profile-view.entity';
 import { PrivacySettings } from '../../entities/privacy-settings.entity';
 import { AuthModule } from '../auth/auth.module';
+import { FriendsModule } from '../friends/friends.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { AuthModule } from '../auth/auth.module';
       PrivacySettings,
     ]),
     forwardRef(() => AuthModule),
+    forwardRef(() => FriendsModule),
   ],
   controllers: [UsersController],
   providers: [UsersService],

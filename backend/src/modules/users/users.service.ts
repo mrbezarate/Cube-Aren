@@ -4,6 +4,8 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, In, Repository } from 'typeorm';
@@ -20,6 +22,7 @@ import { OnboardingDto } from './dto/onboarding.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { toUserCard } from '../../common/user-view';
+import { FriendsService } from '../friends/friends.service';
 
 @Injectable()
 export class UsersService {
@@ -42,6 +45,8 @@ export class UsersService {
     private profileViewRepo: Repository<ProfileView>,
     @InjectRepository(PrivacySettings)
     private privacySettingsRepo: Repository<PrivacySettings>,
+    @Inject(forwardRef(() => FriendsService))
+    private friendsService: FriendsService,
   ) {}
 
   private normalizeProfileValue(value?: string | null): string | null {
@@ -728,7 +733,7 @@ export class UsersService {
     const skip = (page - 1) * limit;
     
     const isOwner = currentUserId === userId;
-    const isFriend = currentUserId && !isOwner ? await this.areFriends(userId, currentUserId) : false;
+    const isFriend = currentUserId && !isOwner ? await this.friendsService.areFriends(userId, currentUserId) : false;
 
     if (!isOwner) {
       const privacy = await this.privacySettingsRepo.findOne({ where: { userId } });
@@ -762,7 +767,7 @@ export class UsersService {
     const skip = (page - 1) * limit;
     
     const isOwner = currentUserId === userId;
-    const isFriend = currentUserId && !isOwner ? await this.areFriends(userId, currentUserId) : false;
+    const isFriend = currentUserId && !isOwner ? await this.friendsService.areFriends(userId, currentUserId) : false;
 
     if (!isOwner) {
       const privacy = await this.privacySettingsRepo.findOne({ where: { userId } });
@@ -797,11 +802,7 @@ export class UsersService {
     return !!follow;
   }
 
-  async areFriends(userId1: string, userId2: string): Promise<boolean> {
-    const follow1 = await this.isFollowing(userId1, userId2);
-    const follow2 = await this.isFollowing(userId2, userId1);
-    return follow1 && follow2; // Friends = mutual follow
-  }
+
 
   // ========== PROFILE VIEWS METHODS ==========
   async trackProfileView(viewerId: string, profileId: string) {
